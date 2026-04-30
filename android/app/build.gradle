@@ -5,9 +5,9 @@ plugins {
 }
 
 android {
-    namespace = "com.alireza1233.telware"   // یک نام یکتا بر اساس اکانت خودت
-    compileSdk = 35                         // آخرین نسخه پایدار (یا 34)
-    ndkVersion = flutter.ndkVersion
+    namespace = "com.alireza1233.telware"
+    compileSdk = 35
+    ndkVersion = "26.1.10909125"   // ✅ تغییر داده شد
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
@@ -19,7 +19,7 @@ android {
     }
 
     defaultConfig {
-        applicationId = "com.alireza1233.telware"   // همان نام package یکتا
+        applicationId = "com.alireza1233.telware"
         minSdk = 21
         targetSdk = 35
         versionCode = flutter.versionCode
@@ -28,7 +28,7 @@ android {
 
     buildTypes {
         release {
-            signingConfig = signingConfigs.debug   // موقتی، فقط برای تست
+            signingConfig = signingConfigs.debug
         }
     }
 }
