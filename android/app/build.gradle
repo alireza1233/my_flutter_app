@@ -24,14 +24,16 @@ android {
         targetSdk = 34
         versionCode = flutter.versionCode
         versionName = flutter.versionName
+        multiDexEnabled true   // برای جلوگیری از خطای تعداد متدها
     }
 
     buildTypes {
         release {
             signingConfig = signingConfigs.debug
-            // غیرفعال کردن کامل مینیفای و شرینک برای جلوگیری از خطاهای امنیتی
+            // غیرفعال کردن کامل مینیفای و شرینک
             minifyEnabled false
             shrinkResources false
+            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }
     }
 }
