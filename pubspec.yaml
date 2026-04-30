@@ -71,10 +71,10 @@ dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^4.0.0
-  # صرفاً برای تولید کدهای Hive (در صورت نیاز)
+  build_runner: ^2.4.13
+  riverpod_generator: ^2.4.3
   hive_generator: ^2.0.1
   flutter_launcher_icons: ^0.14.1
-  # بقیه پکیج‌های توسعه غیرضروری حذف شدند تا خطای _macros حل شود
 
 dependency_overrides:
   intl: 0.20.2
