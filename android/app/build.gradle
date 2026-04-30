@@ -7,7 +7,7 @@ plugins {
 android {
     namespace = "com.alireza1233.telware"
     compileSdk = 35
-    ndkVersion = "26.1.10909125"   // ✅ تغییر داده شد
+    ndkVersion = "26.1.10909125"
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
