@@ -81,7 +81,7 @@ dependency_overrides:
   font_awesome_flutter: 10.6.0
   image_cropper: 8.0.2
   image_cropper_platform_interface: 6.0.0
-  flutter_webrtc: 0.12.10
+  # flutter_webrtc override حذف شد
 
 flutter_launcher_icons:
   image_path: "assets/icon/app_icon_white.png"
