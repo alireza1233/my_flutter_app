@@ -133,7 +133,8 @@ class AudioMessageWidgetState extends State<AudioMessageWidget>
           durationCounter = 0;
           startTimer();
         }
-        await playerController.startPlayer(finishMode: FinishMode.pause);
+        // ✅ خط زیر اصلاح شد (حذف finishMode)
+        await playerController.startPlayer();
         controller.animateTo(controller.value + progressStep,
             duration: const Duration(milliseconds: 300));
         isPlaying = true;
@@ -145,7 +146,7 @@ class AudioMessageWidgetState extends State<AudioMessageWidget>
   }
 
   void loadDummyWaveform() {
-    waveformData = generateDummyWaveform(500); // Example for 500 samples
+    waveformData = generateDummyWaveform(500);
     setState(() {});
   }
 
@@ -247,13 +248,12 @@ class AudioMessageWidgetState extends State<AudioMessageWidget>
             ),
             decoration: BoxDecoration(
               color: widget.isMessage ? Colors.white : Palette.accent,
-              // Set the background color
               borderRadius: getBorderRadius(
                 topLeft: true,
                 bottomLeft: true,
                 topRight: widget.isMessage,
                 bottomRight: widget.isMessage,
-              ), // Set border radius
+              ),
             ),
             child: widget.filePath == null ||
                     !doesFileExistSync(widget.filePath!)
