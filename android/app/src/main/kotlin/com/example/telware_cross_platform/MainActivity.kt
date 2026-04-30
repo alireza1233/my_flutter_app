@@ -1,4 +1,4 @@
-package com.example.telware_cross_platform
+package com.alireza1233.telware
 
 import io.flutter.embedding.android.FlutterActivity
 
