@@ -1,0 +1,45 @@
+name: Build Flutter APK
+
+on:
+  workflow_dispatch:
+
+# اعطای دسترسی نوشتن برای ایجاد Release
+permissions:
+  contents: write
+
+jobs:
+  build-android:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+          cache: true
+
+      - run: flutter pub get
+
+      - run: flutter build apk --release
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: my-telegram-app
+          path: build/app/outputs/flutter-apk/app-release.apk
+
+      - name: Create Release and Upload APK
+        uses: softprops/action-gh-release@v2
+        with:
+          files: build/app/outputs/flutter-apk/app-release.apk
+          tag_name: "v1.0.${{ github.run_number }}"
+          name: "Build #${{ github.run_number }}"
+          body: "APK ساخته شده توسط GitHub Actions"
+          generate_release_notes: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
