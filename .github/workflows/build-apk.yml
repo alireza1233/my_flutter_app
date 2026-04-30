@@ -29,23 +29,35 @@ jobs:
           cache: true
           flutter-version: '3.24.3'
 
-      - name: Clean previous build
-        run: flutter clean
+      - name: Clean everything
+        run: |
+          flutter clean
+          rm -rf .dart_tool
+          rm -rf build
+          rm -rf android/.gradle
+          rm -rf android/app/build
 
       - name: Install dependencies
         run: flutter pub get
 
-      - name: Generate missing code (Riverpod, Hive)
-        run: flutter pub run build_runner build --delete-conflicting-outputs
+      - name: Generate missing code
+        run: |
+          flutter pub run build_runner clean
+          flutter pub run build_runner build --delete-conflicting-outputs
 
-      - name: Build APK (release) with skip validation
-        run: flutter build apk --release --android-skip-build-dependency-validation
+      - name: Build APK (debug)
+        run: flutter build apk --debug
+
+      - name: Build APK (release)
+        run: flutter build apk --release
 
       - name: Create my-build directory
         run: mkdir -p my-build
 
       - name: Copy APK to my-build folder
-        run: cp build/app/outputs/flutter-apk/app-release.apk my-build/
+        run: |
+          cp build/app/outputs/flutter-apk/app-debug.apk my-build/app-debug.apk || true
+          cp build/app/outputs/flutter-apk/app-release.apk my-build/app-release.apk || true
 
       - name: Commit and push APK to my-build folder
         uses: stefanzweifel/git-auto-commit-action@v5
