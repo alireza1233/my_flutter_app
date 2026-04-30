@@ -1,0 +1,26 @@
+# Dart & Flutter
+.dart_tool/
+.packages
+.pub/
+build/
+flutter_*.png
+*.g.dart
+
+# IDE related files (optional)
+.idea/
+.vscode/
+
+# Miscellaneous
+.env
+*.log
+*.lock
+*.pyc
+*.tmp
+*.bak
+*.swp
+*.DS_Store
+*.iml
+.flutter-plugins*
+coverage/
+
+*.g.dart
