@@ -29,6 +29,7 @@ android {
     buildTypes {
         release {
             signingConfig = signingConfigs.debug
+            // غیرفعال کردن کامل مینیفای و شرینک برای جلوگیری از خطاهای امنیتی
             minifyEnabled false
             shrinkResources false
         }
