@@ -47,18 +47,12 @@ jobs:
       - name: Copy APK to my-build folder
         run: cp build/app/outputs/flutter-apk/app-*-release.apk my-build/
 
-      - name: Pull latest changes to avoid divergence
+      - name: Force sync with remote and commit
         run: |
-          git pull --rebase origin main
           git config --global user.name "GitHub Actions Bot"
           git config --global user.email "actions@github.com"
-
-      - name: Commit and push APK to my-build folder
-        uses: stefanzweifel/git-auto-commit-action@v5
-        with:
-          commit_message: "Add APK build #${{ github.run_number }} to my-build folder"
-          branch: main
-          file_pattern: 'my-build/*.apk'
-          commit_user_name: "GitHub Actions Bot"
-          commit_user_email: "actions@github.com"
-          commit_author: "GitHub Actions Bot <actions@github.com>"
+          git fetch origin main
+          git reset --hard origin/main
+          git add my-build/*.apk
+          git commit -m "Add APK build #${{ github.run_number }} to my-build folder"
+          git push --force-with-lease origin main
