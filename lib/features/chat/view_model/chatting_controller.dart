@@ -284,6 +284,33 @@ class ChattingController {
     required String? initializationVector,
   }) async {
     String? chatID = chatModel?.id;
+    // ========== SAVED MESSAGES ==========
+    if (chatID == 'saved_messages') {
+      final savedBox = await Hive.openBox<MessageModel>('saved_messages');
+      final localId = DateTime.now().millisecondsSinceEpoch.toString();
+      final newMessage = MessageModel(
+        senderId: ref.read(userProvider)!.id!,
+        messageContentType: contentType,
+        content: content,
+        timestamp: DateTime.now(),
+        messageType: msgType,
+        userStates: {},
+        localId: localId,
+        parentMessage: parentMessgeId,
+      );
+      await savedBox.add(newMessage);
+      _ref.read(chatsViewModelProvider.notifier).addSentMessage(
+        content: content,
+        chatId: chatID!,
+        msgType: msgType,
+        msgContentType: contentType,
+        parentMessageId: parentMessgeId,
+        isReply: isReply,
+        isForward: msgType == MessageType.forward,
+      );
+      return;
+    }
+    // ====================================
     bool isChatNew = chatID == null;
 
     if (chatID == null && chatModel != null) {
