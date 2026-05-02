@@ -91,16 +91,43 @@ class ChatsViewModel extends _$ChatsViewModel {
     return user;
   }
 
+  /// Creates a special chat for "Saved Messages"
+  ChatModel _createSavedMessagesChat() {
+    final currentUser = ref.read(userProvider);
+    return ChatModel(
+      id: 'saved_messages',
+      title: 'Saved Messages',
+      userIds: [currentUser!.id!, currentUser.id!],
+      type: ChatType.private,
+      messages: [],
+      photoBytes: null, // You can set a custom icon asset later
+      isMuted: false,
+      isArchived: false,
+      isMentioned: false,
+    );
+  }
+
   void setChats(List<ChatModel> chats) {
-    state = updateMessagesFilePath(chats);
+    // Filter out any existing saved messages chat to avoid duplicates
+    final filteredChats = chats.where((chat) => chat.id != 'saved_messages').toList();
+    // Create saved messages chat and prepend to list
+    final savedChat = _createSavedMessagesChat();
+    final updatedChats = [savedChat, ...filteredChats];
+    state = updateMessagesFilePath(updatedChats);
   }
 
   void addChat(ChatModel chat) {
+    // Prevent adding duplicate saved messages chat
+    if (chat.id == 'saved_messages') {
+      // If it already exists, ignore
+      if (state.any((c) => c.id == 'saved_messages')) return;
+    }
     state = [chat, ...state];
   }
 
   void addOldMsgs(String chatId, List<MessageModel> messages) {
     final chatIndex = getChatIndex(chatId);
+    if (chatIndex == -1) return;
     final chat = state[chatIndex];
 
     chat.messages =
@@ -113,6 +140,7 @@ class ChatsViewModel extends _$ChatsViewModel {
   void addUnreadMsgs(List<Map<String, dynamic>> totalResponse) {
     for (var response in totalResponse) {
       final chatIndex = getChatIndex(response['chatId']);
+      if (chatIndex == -1) continue;
       final chat = state[chatIndex];
 
       chat.messages = chat.nextPage == null
@@ -137,6 +165,9 @@ class ChatsViewModel extends _$ChatsViewModel {
     bool isReply = false,
   }) {
     final chatIndex = getChatIndex(chatId);
+    if (chatIndex == -1) {
+      throw Exception('Chat not found: $chatId');
+    }
     final chat = state[chatIndex];
     // todo(ahmed): make sure that new chats are added to the map first
     // I mean, new chats from the backend
@@ -310,6 +341,7 @@ class ChatsViewModel extends _$ChatsViewModel {
 
   void deleteMessage(String msgId, String chatId) {
     final chatIndex = getChatIndex(chatId);
+    if (chatIndex == -1) return;
     final chat = state[chatIndex];
 
     final msgIndex = chat.messages.indexWhere(
@@ -328,6 +360,7 @@ class ChatsViewModel extends _$ChatsViewModel {
 
   String? getMsgGlobalId(String msgLocalId, String chatId) {
     final chatIndex = getChatIndex(chatId);
+    if (chatIndex == -1) return null;
     final chat = state[chatIndex];
 
     final msgIndex = chat.messages.indexWhere(
@@ -354,6 +387,7 @@ class ChatsViewModel extends _$ChatsViewModel {
   void updateMessageFilePath(
       String chatId, String messageLocalId, String filePath) {
     final chatIndex = getChatIndex(chatId);
+    if (chatIndex == -1) return;
     final chat = state[chatIndex];
     // Find the msg with the specified ID
     final msgIndex = chat.messages.indexWhere(
@@ -375,6 +409,7 @@ class ChatsViewModel extends _$ChatsViewModel {
 
   void muteChat(String chatId, int muteUntilSeconds) {
     final chatIndex = getChatIndex(chatId);
+    if (chatIndex == -1) return;
     final chat = state[chatIndex];
     DateTime? muteUntil = muteUntilSeconds == -1
         ? null
@@ -386,6 +421,7 @@ class ChatsViewModel extends _$ChatsViewModel {
 
   void unmuteChat(String chatId) {
     final chatIndex = getChatIndex(chatId);
+    if (chatIndex == -1) return;
     final chat = state[chatIndex];
     chat.copyWith(isMuted: false, muteUntil: null);
     state = List.from(state);
@@ -393,6 +429,7 @@ class ChatsViewModel extends _$ChatsViewModel {
 
   void updateDraft(String chatId, String draft) {
     final chatIndex = getChatIndex(chatId);
+    if (chatIndex == -1) return;
     final chat = state[chatIndex];
     chat.copyWith(draft: draft);
     state = List.from(state);
