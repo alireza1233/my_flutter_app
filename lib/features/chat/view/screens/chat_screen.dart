@@ -1131,4 +1131,13 @@ class _ChatScreen extends ConsumerState<ChatScreen>
       debugPrint('${_messageController.text} look here');
     });
   }
+  Future<void> _loadSavedMessages() async {
+    final savedBox = await Hive.openBox<MessageModel>('saved_messages');
+    final messages = savedBox.values.toList();
+    messages.sort((a,b) => a.timestamp.compareTo(b.timestamp));
+    setState(() {
+      chatModel.messages = messages;
+      chatContent = _generateChatContentWithDateLabels(messages);
+    });
+  }
 }
