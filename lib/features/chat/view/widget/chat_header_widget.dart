@@ -27,18 +27,18 @@ class ChatHeaderWidget extends ConsumerWidget {
       children: [
         CircleAvatar(
           radius: 20,
-          backgroundImage:
-          imageBytes != null ? MemoryImage(imageBytes!) : null,
-          backgroundColor:
-          imageBytes == null ? Palette.primary : null,
-          child: imageBytes == null
+          backgroundImage: title == 'Saved Messages'
+              ? const AssetImage('assets/icon/saved_messages.png') as ImageProvider
+              : (imageBytes != null ? MemoryImage(imageBytes!) : null),
+          backgroundColor: (title != 'Saved Messages' && imageBytes == null) ? Palette.primary : null,
+          child: (title != 'Saved Messages' && imageBytes == null)
               ? Text(
-            getInitials(title),
-            style: const TextStyle(
-              fontWeight: FontWeight.w500,
-              color: Palette.primaryText,
-            ),
-          )
+                  getInitials(title),
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w500,
+                    color: Palette.primaryText,
+                  ),
+                )
               : null,
         ),
         const SizedBox(width: 10),
