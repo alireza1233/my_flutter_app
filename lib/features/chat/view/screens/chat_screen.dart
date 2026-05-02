@@ -409,7 +409,9 @@ class _ChatScreen extends ConsumerState<ChatScreen>
     chatModel = widget.chatModel ?? chat!;
     // اگر چت Saved Messages است، پیام‌ها را از حافظه محلی بخوان
     if (chatModel.id == 'saved_messages') {
-      _loadSavedMessages();
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _loadSavedMessages();
+      });
     }
     final type = chatModel.type;
     final String title = chatModel.title;
