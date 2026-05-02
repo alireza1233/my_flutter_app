@@ -407,6 +407,10 @@ class _ChatScreen extends ConsumerState<ChatScreen>
     final ChatModel? chat =
         (index == -1) ? null : chats[index]; // Chat not found
     chatModel = widget.chatModel ?? chat!;
+    // اگر چت Saved Messages است، پیام‌ها را از حافظه محلی بخوان
+    if (chatModel.id == 'saved_messages') {
+      _loadSavedMessages();
+    }
     final type = chatModel.type;
     final String title = chatModel.title;
     final membersNumber = chatModel.userIds.length;
