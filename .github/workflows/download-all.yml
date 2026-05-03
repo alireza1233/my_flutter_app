@@ -1,4 +1,4 @@
-name: Download All Dependencies (Ultimate)
+name: Download All Dependencies (Final-With-PUB-CACHE)
 
 on:
   workflow_dispatch:
@@ -12,32 +12,54 @@ jobs:
         with:
           flutter-version: '3.24.3'
 
-      - name: Get packages
+      - name: Install pub dependencies
         run: flutter pub get
 
-      - name: Run build_runner
-        run: flutter pub run build_runner build --delete-conflicting-outputs
-
-      - name: Build debug APK
+      - name: Prepare Android project & download Gradle deps
         run: flutter build apk --debug
+        continue-on-error: true
 
-      - name: Upload pub-cache
-        if: always()
+      - name: Make gradlew executable
+        run: chmod +x android/gradlew
+
+      - name: Download ALL Gradle dependencies (even if build fails)
+        run: |
+          cd android
+          ./gradlew dependencies --no-daemon
+        continue-on-error: true
+
+      # ---------- Pub Cache: compress and upload ----------
+      - name: Compress pub-cache using PUB_CACHE env var
+        run: |
+          PUB_CACHE_DIR="${PUB_CACHE:-/home/runner/.pub-cache}"
+          if [ -d "$PUB_CACHE_DIR" ] && [ "$(ls -A $PUB_CACHE_DIR)" ]; then
+            echo "Compressing pub cache from: $PUB_CACHE_DIR"
+            tar -czvf pub-cache.tar.gz -C "$PUB_CACHE_DIR" .
+            echo "PUB_CACHE_TAR_CREATED=true" >> $GITHUB_ENV
+          else
+            echo "ERROR: Pub cache directory is empty or missing at $PUB_CACHE_DIR"
+            exit 1
+          fi
+
+      - name: Upload pub-cache (compressed)
         uses: actions/upload-artifact@v4
         with:
           name: pub-cache
-          path: ~/.pub-cache
+          path: pub-cache.tar.gz
+          if-no-files-found: error
 
+      # ---------- Gradle caches (raw) ----------
       - name: Upload Gradle caches
-        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: gradle-caches
           path: ~/.gradle/caches
+          if-no-files-found: warn
 
+      # ---------- Gradle wrapper (raw) ----------
       - name: Upload gradle-wrapper
-        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: gradle-wrapper
           path: ~/.gradle/wrapper
+          if-no-files-found: warn
