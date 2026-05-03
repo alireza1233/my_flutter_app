@@ -1134,12 +1134,17 @@ class _ChatScreen extends ConsumerState<ChatScreen>
     });
   }
   Future<void> _loadSavedMessages() async {
-    final savedBox = await Hive.openBox<MessageModel>('saved_messages');
-    final messages = savedBox.values.toList();
-    messages.sort((a,b) => a.timestamp.compareTo(b.timestamp));
-    setState(() {
-      chatModel.messages = messages;
-      chatContent = _generateChatContentWithDateLabels(messages);
-    });
+    try {
+      final savedBox = Hive.box<MessageModel>('saved_messages');
+      final messages = savedBox.values.toList();
+      messages.sort((a, b) => a.timestamp.compareTo(b.timestamp));
+      if (mounted) {
+        setState(() {
+          chatModel.messages = messages;
+          chatContent = _generateChatContentWithDateLabels(messages);
+        });
+      }
+    } catch (e) {
+      debugPrint('Error loading saved messages: $e');
+    }
   }
-}
