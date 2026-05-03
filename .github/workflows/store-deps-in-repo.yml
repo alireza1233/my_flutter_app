@@ -1,0 +1,50 @@
+name: Store Dependencies in Repository
+
+on:
+  workflow_dispatch:
+
+jobs:
+  store-in-repo:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.24.3'
+
+      - name: Install dependencies and download Gradle files
+        run: |
+          flutter pub get
+          # This step creates the 'gradlew' file
+          flutter build apk --debug
+          chmod +x android/gradlew
+          cd android
+          ./gradlew dependencies --no-daemon # Forces download of all dependencies
+        continue-on-error: true
+
+      - name: Store cache files in a folder
+        run: |
+          mkdir -p build-cache/pub-cache
+          mkdir -p build-cache/gradle-caches
+          mkdir -p build-cache/gradle-wrapper
+
+          # Copy contents, but exclude any temporary or lock files
+          # We use 'rsync -a' for a clean copy
+          rsync -av --exclude='cache/lock*' --exclude='caches/modules-2/modules-2.lock' ~/.pub-cache/ build-cache/pub-cache/
+          rsync -av --exclude='daemon' --exclude='wrapper/dists/*/*/*.part' ~/.gradle/caches/ build-cache/gradle-caches/
+          rsync -av ~/.gradle/wrapper/ build-cache/gradle-wrapper/
+
+      - name: Configure Git & Push
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git add build-cache
+          git commit -m "Update build cache [skip ci]" || echo "No changes to commit"
+          git push
