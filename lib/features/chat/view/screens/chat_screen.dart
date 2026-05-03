@@ -36,6 +36,7 @@ import 'package:telware_cross_platform/features/chat/view_model/chatting_control
 import 'package:telware_cross_platform/features/user/view/widget/settings_option_widget.dart';
 import 'package:telware_cross_platform/features/chat/utils/chat_utils.dart'
 import 'package:telware_cross_platform/features/chat/utils/chat_utils.dart'
+import 'package:hive/hive.dart';
     as utils;
 
 import '../../../../core/routes/routes.dart';
