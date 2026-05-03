@@ -1,4 +1,4 @@
-name: Download All Dependencies (Final)
+name: Download All Dependencies (Ultimate)
 
 on:
   workflow_dispatch:
@@ -12,30 +12,31 @@ jobs:
         with:
           flutter-version: '3.24.3'
 
-      - name: Install dependencies
+      - name: Get packages
         run: flutter pub get
 
-      - name: Build runner (generate missing .g.dart files)
+      - name: Run build_runner
         run: flutter pub run build_runner build --delete-conflicting-outputs
 
-      - name: Build debug APK (downloads all Gradle dependencies)
-        id: build
+      - name: Build debug APK
         run: flutter build apk --debug
-        continue-on-error: true   # حتی اگر خطا داشت، ادامه بده
 
       - name: Upload pub-cache
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: pub-cache
           path: ~/.pub-cache
 
       - name: Upload Gradle caches
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: gradle-caches
           path: ~/.gradle/caches
 
       - name: Upload gradle-wrapper
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: gradle-wrapper
