@@ -1,50 +1,75 @@
-name: Store Dependencies in Repository
+name: Store Dependencies in Repository (instead of Artifacts)
 
 on:
   workflow_dispatch:
 
 jobs:
-  store-in-repo:
+  store:
     runs-on: ubuntu-latest
     permissions:
       contents: write
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      - name: Setup Flutter
-        uses: subosito/flutter-action@v2
+      - uses: subosito/flutter-action@v2
         with:
           flutter-version: '3.24.3'
 
-      - name: Install dependencies and download Gradle files
-        run: |
-          flutter pub get
-          # This step creates the 'gradlew' file
-          flutter build apk --debug
-          chmod +x android/gradlew
-          cd android
-          ./gradlew dependencies --no-daemon # Forces download of all dependencies
+      - name: Install pub dependencies
+        run: flutter pub get
+
+      - name: Prepare Android project & download Gradle deps
+        run: flutter build apk --debug
         continue-on-error: true
 
-      - name: Store cache files in a folder
+      - name: Make gradlew executable
+        run: chmod +x android/gradlew
+
+      - name: Download ALL Gradle dependencies (even if build fails)
         run: |
-          mkdir -p build-cache/pub-cache
-          mkdir -p build-cache/gradle-caches
-          mkdir -p build-cache/gradle-wrapper
+          cd android
+          ./gradlew dependencies --no-daemon
+        continue-on-error: true
 
-          # Copy contents, but exclude any temporary or lock files
-          # We use 'rsync -a' for a clean copy
-          rsync -av --exclude='cache/lock*' --exclude='caches/modules-2/modules-2.lock' ~/.pub-cache/ build-cache/pub-cache/
-          rsync -av --exclude='daemon' --exclude='wrapper/dists/*/*/*.part' ~/.gradle/caches/ build-cache/gradle-caches/
-          rsync -av ~/.gradle/wrapper/ build-cache/gradle-wrapper/
+      # ---------- Compress Pub Cache ----------
+      - name: Compress pub-cache
+        run: |
+          PUB_CACHE_DIR="${PUB_CACHE:-/home/runner/.pub-cache}"
+          if [ -d "$PUB_CACHE_DIR" ] && [ "$(ls -A $PUB_CACHE_DIR)" ]; then
+            echo "Compressing pub cache from: $PUB_CACHE_DIR"
+            tar -czvf pub-cache.tar.gz -C "$PUB_CACHE_DIR" .
+          else
+            echo "ERROR: Pub cache directory is empty or missing at $PUB_CACHE_DIR"
+            exit 1
+          fi
 
-      - name: Configure Git & Push
+      # ---------- Compress Gradle caches ----------
+      - name: Compress Gradle caches
+        run: |
+          if [ -d ~/.gradle/caches ] && [ "$(ls -A ~/.gradle/caches)" ]; then
+            tar -czvf gradle-caches.tar.gz -C ~/.gradle/caches .
+          else
+            echo "WARNING: Gradle caches directory is empty or missing"
+          fi
+
+      # ---------- Compress Gradle wrapper (optional, usually small) ----------
+      - name: Compress Gradle wrapper
+        run: |
+          if [ -d ~/.gradle/wrapper ] && [ "$(ls -A ~/.gradle/wrapper)" ]; then
+            tar -czvf gradle-wrapper.tar.gz -C ~/.gradle/wrapper .
+          else
+            echo "WARNING: Gradle wrapper directory is empty or missing"
+          fi
+
+      # ---------- Commit and push to repository ----------
+      - name: Commit and push compressed files
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
-          git add build-cache
-          git commit -m "Update build cache [skip ci]" || echo "No changes to commit"
+          mkdir -p deps-cache
+          mv *.tar.gz deps-cache/
+          git add deps-cache/
+          git commit -m "Add build dependencies cache [skip ci]" || echo "No changes to commit"
           git push
