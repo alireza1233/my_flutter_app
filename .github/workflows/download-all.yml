@@ -30,6 +30,9 @@ jobs:
       - name: Install dependencies
         run: flutter pub get
 
+      - name: Generate missing code (Riverpod, Hive, JsonSerializable, etc.)
+        run: dart run build_runner build --delete-conflicting-outputs
+
       - name: Build (to trigger Gradle)
         run: flutter build apk --debug
 
