@@ -84,6 +84,7 @@ class _ChatScreen extends ConsumerState<ChatScreen>
   List<int> _messageIndices = [];
 
   late ChatType type;
+  bool _isSavedMessagesLoaded = false;
 
   @override
   void initState() {
@@ -97,6 +98,10 @@ class _ChatScreen extends ConsumerState<ChatScreen>
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (widget.forwardedMessages != null) {
         _sendForwardedMessages();
+      }
+      // بارگذاری اولیه پیام‌های Saved Messages
+      if (chatModel.id == 'saved_messages' && !_isSavedMessagesLoaded) {
+        _loadSavedMessages();
       }
     });
     _chosenAnimation = utils.getRandomLottieAnimation();
@@ -269,16 +274,37 @@ class _ChatScreen extends ConsumerState<ChatScreen>
     );
     _messageController.clear();
     _updateDraft(true);
-    ref.read(chattingControllerProvider).sendMsg(
-          content: newMessage.content!,
-          msgType: newMessage.messageType,
-          contentType: newMessage.messageContentType,
-          chatType: ChatType.private,
-          chatModel: chatModel,
-          parentMessgeId: replyMessage?.id,
-          encryptionKey: chatModel.encryptionKey,
-          initializationVector: chatModel.initializationVector,
-        );
+    
+    // اگر چت Saved Messages است، پیام را مستقیماً به لیست اضافه کن
+    if (chatModel.id == 'saved_messages') {
+      // اضافه کردن به لیست محلی برای نمایش فوری
+      setState(() {
+        chatModel.messages.add(newMessage);
+        chatContent = _generateChatContentWithDateLabels(chatModel.messages);
+      });
+      // سپس به کنترلر بفرست تا در Hive ذخیره شود
+      ref.read(chattingControllerProvider).sendMsg(
+        content: content,
+        msgType: MessageType.normal,
+        contentType: contentType,
+        chatType: ChatType.private,
+        chatModel: chatModel,
+        parentMessgeId: replyMessage?.id,
+        encryptionKey: chatModel.encryptionKey,
+        initializationVector: chatModel.initializationVector,
+      );
+    } else {
+      ref.read(chattingControllerProvider).sendMsg(
+        content: newMessage.content!,
+        msgType: newMessage.messageType,
+        contentType: newMessage.messageContentType,
+        chatType: ChatType.private,
+        chatModel: chatModel,
+        parentMessgeId: replyMessage?.id,
+        encryptionKey: chatModel.encryptionKey,
+        initializationVector: chatModel.initializationVector,
+      );
+    }
   }
 
   void _editMessage() {
@@ -388,11 +414,7 @@ class _ChatScreen extends ConsumerState<ChatScreen>
     final ChatModel? chat =
         (index == -1) ? null : chats[index];
     chatModel = widget.chatModel ?? chat!;
-    if (chatModel.id == 'saved_messages') {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        _loadSavedMessages();
-      });
-    }
+    
     final type = chatModel.type;
     final String title = chatModel.title;
     final membersNumber = chatModel.userIds.length;
@@ -1036,6 +1058,7 @@ class _ChatScreen extends ConsumerState<ChatScreen>
           chatModel.messages = messages;
           chatContent = _generateChatContentWithDateLabels(messages);
         });
+        _isSavedMessagesLoaded = true;
       }
     } catch (e) {
       debugPrint('Error loading saved messages: $e');
