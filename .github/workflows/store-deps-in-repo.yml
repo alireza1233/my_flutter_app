@@ -54,7 +54,7 @@ jobs:
             echo "WARNING: Gradle caches directory is empty or missing"
           fi
 
-      # ---------- Compress Gradle wrapper (optional, usually small) ----------
+      # ---------- Compress Gradle wrapper ----------
       - name: Compress Gradle wrapper
         run: |
           if [ -d ~/.gradle/wrapper ] && [ "$(ls -A ~/.gradle/wrapper)" ]; then
@@ -63,13 +63,22 @@ jobs:
             echo "WARNING: Gradle wrapper directory is empty or missing"
           fi
 
-      # ---------- Commit and push to repository ----------
+      # ---------- Install Git LFS ----------
+      - name: Install Git LFS
+        run: |
+          sudo apt-get update
+          sudo apt-get install git-lfs -y
+          git lfs install
+
+      # ---------- Commit and push to repository with LFS ----------
       - name: Commit and push compressed files
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
           mkdir -p deps-cache
           mv *.tar.gz deps-cache/
-          git add deps-cache/
+          # اطمینان از اینکه الگوی LFS قبلاً در .gitattributes تنظیم شده است
+          git lfs track "deps-cache/*.tar.gz"
+          git add .gitattributes deps-cache/
           git commit -m "Add build dependencies cache [skip ci]" || echo "No changes to commit"
-          git push
+          git push origin main
