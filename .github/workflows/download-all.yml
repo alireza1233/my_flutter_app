@@ -1,4 +1,4 @@
-name: Download All Dependencies (Safe Mode)
+name: Download All Dependencies (Final)
 
 on:
   workflow_dispatch:
@@ -7,45 +7,34 @@ jobs:
   download:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup Flutter
-        uses: subosito/flutter-action@v2
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
         with:
           flutter-version: '3.24.3'
 
-      # نصب پکیج‌های pub
       - name: Install dependencies
         run: flutter pub get
 
-      # Precache موتور فلاتر برای android
-      - name: Precache Flutter artifacts
-        run: flutter precache --android
+      - name: Build runner (generate missing .g.dart files)
+        run: flutter pub run build_runner build --delete-conflicting-outputs
 
-      # دانلود وابستگی‌های Gradle با استفاده از task مخصوص Flutter
-      - name: Download Gradle dependencies via Flutter task
-        run: |
-          cd android
-          chmod +x gradlew
-          ./gradlew :app:downloadDebugAndroidDependencies --no-daemon
-          ./gradlew :app:downloadReleaseAndroidDependencies --no-daemon
+      - name: Build debug APK (downloads all Gradle dependencies)
+        id: build
+        run: flutter build apk --debug
+        continue-on-error: true   # حتی اگر خطا داشت، ادامه بده
 
-      # آپلود pub-cache
       - name: Upload pub-cache
         uses: actions/upload-artifact@v4
         with:
           name: pub-cache
           path: ~/.pub-cache
 
-      # آپلود کل .gradle
-      - name: Upload gradle-full
+      - name: Upload Gradle caches
         uses: actions/upload-artifact@v4
         with:
-          name: gradle-full
-          path: ~/.gradle
+          name: gradle-caches
+          path: ~/.gradle/caches
 
-      # آپلود wrapper (تضمین)
       - name: Upload gradle-wrapper
         uses: actions/upload-artifact@v4
         with:
