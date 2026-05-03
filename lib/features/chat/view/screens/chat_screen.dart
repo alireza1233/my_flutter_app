@@ -1148,3 +1148,4 @@ class _ChatScreen extends ConsumerState<ChatScreen>
       debugPrint('Error loading saved messages: $e');
     }
   }
+}
