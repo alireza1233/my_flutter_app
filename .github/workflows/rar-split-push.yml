@@ -1,4 +1,4 @@
-name: RAR Split and Push Dependencies
+name: RAR Split and Push Dependencies (50MB parts)
 
 on:
   workflow_dispatch:
@@ -60,14 +60,14 @@ jobs:
           sudo apt-get update
           sudo apt-get install rar -y
 
-      - name: Split tar.gz files into RAR volumes (80MB each, with recovery)
+      - name: Split tar.gz files into RAR volumes (50MB each, with recovery)
         run: |
           mkdir -p rar-parts
           for file in pub-cache.tar.gz gradle-caches.tar.gz gradle-wrapper.tar.gz; do
             if [ -f "$file" ]; then
               base="${file%.tar.gz}"
               echo "Creating RAR volumes for $file ..."
-              rar a -v80m -rr10% -ep1 "rar-parts/${base}.rar" "$file"
+              rar a -v50m -rr10% -ep1 "rar-parts/${base}.rar" "$file"
             fi
           done
           ls -lh rar-parts/
@@ -77,5 +77,5 @@ jobs:
           git config --global user.name "github-actions[bot]"
           git config --global user.email "actions@github.com"
           git add rar-parts/
-          git commit -m "Add RAR split parts (80MB each, recovery record) [skip ci]" || echo "No changes"
+          git commit -m "Add RAR split parts (50MB each, recovery record) [skip ci]" || echo "No changes"
           git push origin main
