@@ -1,10 +1,10 @@
-name: RAR Split and Push Dependencies (Flutter 3.41.5)
+name: RAR Split and Upload to Release (Flutter 3.41.5)
 
 on:
   workflow_dispatch:
 
 jobs:
-  rar-split-push:
+  rar-split-upload:
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -15,12 +15,12 @@ jobs:
 
       - uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.41.5'   # دقیقاً نسخه شما
+          flutter-version: '3.41.5'
 
       - name: Install pub dependencies
         run: flutter pub get
 
-      - name: Run build_runner to generate .g.dart files (offline-ready)
+      - name: Run build_runner to generate .g.dart files
         run: dart run build_runner build --delete-conflicting-outputs
         continue-on-error: true
 
@@ -37,7 +37,7 @@ jobs:
           ./gradlew dependencies --no-daemon
         continue-on-error: true
 
-      - name: Compress pub-cache with correct version
+      - name: Compress pub-cache
         run: |
           PUB_CACHE_DIR="${PUB_CACHE:-/home/runner/.pub-cache}"
           if [ -d "$PUB_CACHE_DIR" ] && [ "$(ls -A $PUB_CACHE_DIR)" ]; then
@@ -64,22 +64,28 @@ jobs:
           sudo apt-get update
           sudo apt-get install rar -y
 
-      - name: Split tar.gz files into RAR volumes (50MB each, with recovery)
+      - name: Split tar.gz files into RAR volumes (max 400MB each, with recovery)
         run: |
           mkdir -p rar-parts
           for file in pub-cache.tar.gz gradle-caches.tar.gz gradle-wrapper.tar.gz; do
             if [ -f "$file" ]; then
               base="${file%.tar.gz}"
-              echo "Creating RAR volumes for $file ..."
-              rar a -v50m -rr10% -ep1 "rar-parts/${base}.rar" "$file"
+              echo "Creating RAR volumes (max 400MB) for $file ..."
+              rar a -v400m -rr10% -ep1 "rar-parts/${base}.rar" "$file"
             fi
           done
           ls -lh rar-parts/
 
-      - name: Commit and push RAR parts to repository (no LFS)
-        run: |
-          git config --global user.name "github-actions[bot]"
-          git config --global user.email "actions@github.com"
-          git add rar-parts/
-          git commit -m "Add RAR split parts (50MB each, Flutter 3.41.5) [skip ci]" || echo "No changes"
-          git push origin main
+      - name: Create GitHub Release and upload RAR parts
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: deps-rar-${{ github.run_number }}
+          name: "Dependencies Cache (max 400MB parts) - Flutter 3.41.5"
+          body: |
+            فایل‌های کش برای بیلد آفلاین با Flutter 3.41.5
+            - هر قطعه حداکثر 400 مگابایت، دارای Recovery Record 10%
+            - پس از دانلود تمام قطعات هر دسته، با WinRAR یا 7-Zip فایل part1.rar را Extract کنید تا فایل tar.gz بازسازی شود.
+          files: rar-parts/*
+          fail_on_unmatched_files: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
