@@ -1,0 +1,52 @@
+name: Download All Dependencies
+
+on:
+  workflow_dispatch:
+
+jobs:
+  download:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.24.3'
+
+      - name: Cache pub
+        uses: actions/cache@v4
+        with:
+          path: ~/.pub-cache
+          key: pub-cache
+
+      - name: Cache Gradle
+        uses: actions/cache@v4
+        with:
+          path: ~/.gradle/caches
+          key: gradle-cache
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Build (to trigger Gradle)
+        run: flutter build apk --debug
+
+      - name: Upload pub-cache
+        uses: actions/upload-artifact@v4
+        with:
+          name: pub-cache
+          path: ~/.pub-cache
+
+      - name: Upload Gradle caches
+        uses: actions/upload-artifact@v4
+        with:
+          name: gradle-caches
+          path: ~/.gradle/caches
+
+      - name: Upload .gradle wrapper
+        uses: actions/upload-artifact@v4
+        with:
+          name: gradle-wrapper
+          path: ~/.gradle/wrapper
