@@ -286,7 +286,7 @@ class _ChatScreen extends ConsumerState<ChatScreen>
       ref.read(chattingControllerProvider).sendMsg(
         content: content,
         msgType: MessageType.normal,
-        contentType: contentType,
+        contentType: messageContentType,
         chatType: ChatType.private,
         chatModel: chatModel,
         parentMessgeId: replyMessage?.id,
