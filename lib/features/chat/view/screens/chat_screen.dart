@@ -9,6 +9,7 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
+import 'package:hive/hive.dart';
 
 import 'package:telware_cross_platform/core/constants/keys.dart';
 import 'package:telware_cross_platform/core/mock/constants_mock.dart';
@@ -34,10 +35,7 @@ import 'package:telware_cross_platform/features/chat/view/widget/new_chat_screen
 import 'package:telware_cross_platform/features/chat/view_model/chats_view_model.dart';
 import 'package:telware_cross_platform/features/chat/view_model/chatting_controller.dart';
 import 'package:telware_cross_platform/features/user/view/widget/settings_option_widget.dart';
-import 'package:telware_cross_platform/features/chat/utils/chat_utils.dart'
-import 'package:telware_cross_platform/features/chat/utils/chat_utils.dart'
-import 'package:hive/hive.dart';
-    as utils;
+import 'package:telware_cross_platform/features/chat/utils/chat_utils.dart' as utils;
 
 import '../../../../core/routes/routes.dart';
 import '../widget/reply_widget.dart';
@@ -80,10 +78,7 @@ class _ChatScreen extends ConsumerState<ChatScreen>
   bool showMuteOptions = false;
   bool isAllowedToSend = true;
 
-  // ignore: prefer_final_fields
   int _currentMatch = 1;
-
-  // ignore: unused_field
   int _currentMatchIndex = 0;
   Map<int, List<MapEntry<int, int>>> _messageMatches = {};
   List<int> _messageIndices = [];
@@ -105,7 +100,6 @@ class _ChatScreen extends ConsumerState<ChatScreen>
       }
     });
     _chosenAnimation = utils.getRandomLottieAnimation();
-    // Initialize the AudioRecorderService
     _audioRecorderService = AudioRecorderService(updateUI: setState);
   }
 
@@ -115,8 +109,7 @@ class _ChatScreen extends ConsumerState<ChatScreen>
     _scrollController.dispose();
     _audioRecorderService.dispose();
     SystemChannels.textInput.invokeMethod('TextInput.hide');
-    WidgetsBinding.instance.removeObserver(this); // Remove the observer
-
+    WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }
 
@@ -162,17 +155,14 @@ class _ChatScreen extends ConsumerState<ChatScreen>
         date1.day == date2.day;
   }
 
-  // Called when the keyboard visibility changes
   @override
   void didChangeMetrics() {
     super.didChangeMetrics();
     if (_scrollController.hasClients && _isAtBottom()) {
-      // When the keyboard is shown and the user is at the bottom, scroll to the bottom
       // _scrollToBottom();
     }
   }
 
-  // Check if the user is already at the bottom of the scroll view
   bool _isAtBottom() {
     if (_scrollController.position.pixels ==
         _scrollController.position.maxScrollExtent) {
@@ -194,7 +184,6 @@ class _ChatScreen extends ConsumerState<ChatScreen>
     }
   }
 
-  // Scroll the chat view to the bottom
   void _scrollToBottom() {
     Future.delayed(const Duration(milliseconds: 100), () {
       if (_scrollController.hasClients) {
@@ -203,7 +192,6 @@ class _ChatScreen extends ConsumerState<ChatScreen>
     });
   }
 
-  // Send the Forwarded Messages
   void _sendForwardedMessages() {
     for (MessageModel message in widget.forwardedMessages!) {
       ref.read(chattingControllerProvider).sendMsg(
@@ -218,7 +206,6 @@ class _ChatScreen extends ConsumerState<ChatScreen>
     }
   }
 
-  //TODO: Implement the sendMsg method with another types of messages
   void _sendMessage({
     required WidgetRef ref,
     required String contentType,
@@ -234,7 +221,6 @@ class _ChatScreen extends ConsumerState<ChatScreen>
     bool needUploadMedia = contentType != 'text';
     String? mediaUrl;
     String messageText = _messageController.text;
-    // Upload the media file before sending the message
     if (needUploadMedia) {
       if (filePath != null) {
         if (UPLOAD_MEDIA) {
@@ -272,7 +258,6 @@ class _ChatScreen extends ConsumerState<ChatScreen>
       isMusic: isMusic,
       text: messageText,
     );
-    // TODO : Handle media attribute in the request of sending a message
     MessageModel newMessage = MessageModel(
       senderId: ref.read(userProvider)!.id!,
       messageContentType: messageContentType,
@@ -291,16 +276,13 @@ class _ChatScreen extends ConsumerState<ChatScreen>
           chatType: ChatType.private,
           chatModel: chatModel,
           parentMessgeId: replyMessage?.id,
-
           encryptionKey: chatModel.encryptionKey,
           initializationVector: chatModel.initializationVector,
-
         );
   }
 
   void _editMessage() {
     if (editMessage == null || _messageController.text.isEmpty) return;
-    // todo(ahmed): handle extreme cases like editing a message that is not yet sent
     ref.read(chattingControllerProvider).editMsg(
         (editMessage?.id)!, (chatModel.id)!, _messageController.text,
         chatType: ChatType.private,
@@ -357,7 +339,6 @@ class _ChatScreen extends ConsumerState<ChatScreen>
         messageIndices.add(i);
       }
     }
-
     setState(() {
       _messageIndices = messageIndices;
       _currentMatchIndex = currentMatchIndex;
@@ -383,7 +364,6 @@ class _ChatScreen extends ConsumerState<ChatScreen>
       return;
     }
     _scrollController.jumpTo((_currentMatchIndex - 1) * 20.0);
-
     setState(() {
       _currentMatchIndex = _currentMatchIndex - 1;
       _currentMatch = _currentMatch + 1;
@@ -395,7 +375,6 @@ class _ChatScreen extends ConsumerState<ChatScreen>
       return;
     }
     _scrollController.jumpTo((_currentMatchIndex + 1) * 20.0);
-
     setState(() {
       _currentMatchIndex = _currentMatchIndex + 1;
       _currentMatch = _currentMatch - 1;
@@ -407,9 +386,8 @@ class _ChatScreen extends ConsumerState<ChatScreen>
     final chats = ref.watch(chatsViewModelProvider);
     final index = chats.indexWhere((chat) => chat.id == widget.chatId);
     final ChatModel? chat =
-        (index == -1) ? null : chats[index]; // Chat not found
+        (index == -1) ? null : chats[index];
     chatModel = widget.chatModel ?? chat!;
-    // اگر چت Saved Messages است، پیام‌ها را از حافظه محلی بخوان
     if (chatModel.id == 'saved_messages') {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         _loadSavedMessages();
@@ -434,7 +412,6 @@ class _ChatScreen extends ConsumerState<ChatScreen>
     }
     chatContent = _generateChatContentWithDateLabels(messages);
     pinnedMessages = messages.where((message) => message.isPinned).toList();
-    // debugPrint('pinned Messages count after is : ${pinnedMessages.length}');
 
     if (chatModel.messagingPermission == false) {
       setState(() {
@@ -530,19 +507,16 @@ class _ChatScreen extends ConsumerState<ChatScreen>
                   ),
                   title: Row(
                     children: [
-                      // Number
                       Text(
                         selectedMessages.length.toString(),
                         style:
                             const TextStyle(color: Colors.white, fontSize: 18),
                       ),
                       const Spacer(),
-                      // Copy icon
                       IconButton(
                         icon: const Icon(Icons.copy, color: Colors.white),
                         onPressed: () {},
                       ),
-                      // Share icon
                       IconButton(
                         icon: const Icon(FontAwesomeIcons.share,
                             color: Colors.white),
@@ -562,7 +536,6 @@ class _ChatScreen extends ConsumerState<ChatScreen>
               Expanded(
                 child: Stack(
                   children: [
-                    // Chat content area (with background SVG)
                     Positioned.fill(
                       child: SvgPicture.asset(
                         'assets/svg/default_pattern.svg',
@@ -587,9 +560,7 @@ class _ChatScreen extends ConsumerState<ChatScreen>
                                         text: msg.senderId,
                                         subtext:
                                             msg.content?.getContent() ?? "",
-                                        onTap: () => {
-                                          // TODO (Mo): Create scroll to msg
-                                        },
+                                        onTap: () => {},
                                       );
                                     }).toList(),
                                   ),
@@ -613,7 +584,8 @@ class _ChatScreen extends ConsumerState<ChatScreen>
                                       onLongPress: _onLongPress,
                                       onReply: _onReply,
                                       onEdit: _onEdit,
-                          chat: chat,),
+                                      chat: chat,
+                                    ),
                         ),
                         if (replyMessage != null)
                           ReplyEditFieldHeader(
@@ -662,9 +634,7 @@ class _ChatScreen extends ConsumerState<ChatScreen>
                                                 Icons.reply,
                                               )
                                             : const SizedBox(),
-                                        const SizedBox(
-                                          width: 5,
-                                        ),
+                                        const SizedBox(width: 5),
                                         selectedMessages.length == 1
                                             ? const Text(
                                                 'Reply',
@@ -683,9 +653,7 @@ class _ChatScreen extends ConsumerState<ChatScreen>
                                     child: const Row(
                                       children: [
                                         Icon(FontAwesomeIcons.share),
-                                        SizedBox(
-                                          width: 5,
-                                        ),
+                                        SizedBox(width: 5),
                                         Text(
                                           'Forward',
                                           style: TextStyle(color: Colors.white),
@@ -722,7 +690,6 @@ class _ChatScreen extends ConsumerState<ChatScreen>
                                   key: ChatKeys.chatSearchDatePicker,
                                   icon: const Icon(Icons.edit_calendar),
                                   onPressed: () {
-                                    // Show the Cupertino Date Picker when the icon is pressed
                                     DatePicker.showDatePicker(
                                       context,
                                       pickerTheme: const DateTimePickerTheme(
@@ -790,84 +757,77 @@ class _ChatScreen extends ConsumerState<ChatScreen>
                           ),
                       ],
                     ),
-                    pinnedMessages.isNotEmpty
-                        ? Positioned(
-                            top: 0,
-                            // Adjust this to position the widget from the top of the screen
-                            left: 0,
-                            right: 0,
-                            child: Container(
-                              color: Palette.secondary,
-                              // Example background color for the widget
-                              padding: const EdgeInsets.symmetric(
-                                  vertical: 10, horizontal: 5),
-                              child: Row(
-                                mainAxisAlignment:
-                                    MainAxisAlignment.spaceBetween,
+                    if (pinnedMessages.isNotEmpty)
+                      Positioned(
+                        top: 0,
+                        left: 0,
+                        right: 0,
+                        child: Container(
+                          color: Palette.secondary,
+                          padding: const EdgeInsets.symmetric(
+                              vertical: 10, horizontal: 5),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Row(
                                 children: [
-                                  Row(
+                                  Column(
+                                    children: List.generate(
+                                        pinnedMessages.length, (index) {
+                                      return Container(
+                                        height: 40 / pinnedMessages.length,
+                                        padding: const EdgeInsets.all(1.0),
+                                        margin: const EdgeInsets.all(1.0),
+                                        decoration: BoxDecoration(
+                                          color: Colors.blueAccent,
+                                          borderRadius:
+                                              BorderRadius.circular(8.0),
+                                        ),
+                                      );
+                                    }),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  const Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
                                     children: [
-                                      Column(
-                                        children: List.generate(
-                                            pinnedMessages.length, (index) {
-                                          return Container(
-                                            height: 40 / pinnedMessages.length,
-                                            padding: const EdgeInsets.all(1.0),
-                                            margin: const EdgeInsets.all(1.0),
-                                            decoration: BoxDecoration(
-                                              color: Colors.blueAccent,
-                                              borderRadius:
-                                                  BorderRadius.circular(8.0),
-                                            ),
-                                          );
-                                        }),
+                                      Text(
+                                        'Pinned Message',
+                                        style: TextStyle(
+                                            color: Palette.primary,
+                                            fontSize: 12),
                                       ),
-                                      const SizedBox(
-                                        width: 8,
-                                      ),
-                                      const Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
-                                        children: [
-                                          Text(
-                                            'Pinned Message',
-                                            style: TextStyle(
-                                                color: Palette.primary,
-                                                fontSize: 12),
-                                          ),
-                                          Text(
-                                            // pinnedMessages[indexInPinnedMessage].content as String,
-                                            'Content placeholder',
-                                            style: TextStyle(fontSize: 12),
-                                          )
-                                        ],
-                                      ),
+                                      Text(
+                                        'Content placeholder',
+                                        style: TextStyle(fontSize: 12),
+                                      )
                                     ],
                                   ),
-                                  GestureDetector(
-                                    onTap: () {
-                                      List<String> senderIds = [];
-                                      for (var message in pinnedMessages) {
-                                        senderIds.add(message.senderId);
-                                      }
-                                      ChatModel newChat = ChatModel(
-                                          title: 'pinnedMessages',
-                                          userIds: senderIds,
-                                          type: ChatType.group,
-                                          messages: pinnedMessages);
-                                      context.push(Routes.pinnedMessagesScreen,
-                                          extra: newChat);
-                                    },
-                                    child: const Icon(
-                                      Icons.menu_open_outlined,
-                                      color: Palette.accentText,
-                                    ),
-                                  )
                                 ],
                               ),
-                            ),
-                          )
-                        : const SizedBox(),
+                              GestureDetector(
+                                onTap: () {
+                                  List<String> senderIds = [];
+                                  for (var message in pinnedMessages) {
+                                    senderIds.add(message.senderId);
+                                  }
+                                  ChatModel newChat = ChatModel(
+                                      title: 'pinnedMessages',
+                                      userIds: senderIds,
+                                      type: ChatType.group,
+                                      messages: pinnedMessages);
+                                  context.push(Routes.pinnedMessagesScreen,
+                                      extra: newChat);
+                                },
+                                child: const Icon(
+                                  Icons.menu_open_outlined,
+                                  color: Palette.accentText,
+                                ),
+                              )
+                            ],
+                          ),
+                        ),
+                      ),
                     if (isSearching && _numberOfMatches != 0) ...[
                       Positioned(
                         bottom: 150,
@@ -906,8 +866,7 @@ class _ChatScreen extends ConsumerState<ChatScreen>
                     ],
                     MagicRecordingButton(
                         audioRecorderService: _audioRecorderService,
-                        sendMessage: (
-                            {required String contentType, String? filePath}) {
+                        sendMessage: ({required String contentType, String? filePath}) {
                           _sendMessage(
                               ref: ref,
                               contentType: contentType,
@@ -924,100 +883,44 @@ class _ChatScreen extends ConsumerState<ChatScreen>
   void _showMoreSettings() {
     var items = [];
     bool isAdmin = ref.read(userProvider)!.isAdmin;
-    //TODO(marwan): check for filter status to update the icon status.
     if (isAdmin) {
       items = [
         {'icon': Icons.search, 'text': 'Search', 'value': 'search'},
-        {
-          'icon': Icons.filter_alt,
-          'text': 'Filter Content',
-          'value': 'filter-content'
-        },
+        {'icon': Icons.filter_alt, 'text': 'Filter Content', 'value': 'filter-content'},
       ];
     } else {
       if (showMuteOptions) {
         items = [
           {'icon': Icons.arrow_back, 'text': 'Back', 'value': 'no-close'},
-          {
-            'icon': Icons.music_off_outlined,
-            'text': 'Disable sound',
-            'value': 'disable-sound'
-          },
-          {
-            'icon': Icons.access_time_rounded,
-            'text': 'Mute for 30m',
-            'value': 'mute-30m'
-          },
-          {
-            'icon': Icons.notifications_paused_outlined,
-            'text': 'Mute for...',
-            'value': 'mute-custom'
-          },
-          {
-            'icon': Icons.tune_outlined,
-            'text': 'Customize',
-            'value': 'customize'
-          },
-          {
-            'icon': Icons.volume_off_outlined,
-            'text': 'Mute Forever',
-            'value': 'mute-forever',
-            'color': Palette.error
-          },
+          {'icon': Icons.music_off_outlined, 'text': 'Disable sound', 'value': 'disable-sound'},
+          {'icon': Icons.access_time_rounded, 'text': 'Mute for 30m', 'value': 'mute-30m'},
+          {'icon': Icons.notifications_paused_outlined, 'text': 'Mute for...', 'value': 'mute-custom'},
+          {'icon': Icons.tune_outlined, 'text': 'Customize', 'value': 'customize'},
+          {'icon': Icons.volume_off_outlined, 'text': 'Mute Forever', 'value': 'mute-forever', 'color': Palette.error},
         ];
       } else {
         if (_isMuted) {
           items = [
-            {
-              'icon': Icons.volume_off_outlined,
-              'text': 'Unmute',
-              'value': 'unmute-chat'
-            },
+            {'icon': Icons.volume_off_outlined, 'text': 'Unmute', 'value': 'unmute-chat'},
           ];
         } else {
           items = [
-            {
-              'icon': Icons.volume_up_outlined,
-              'text': 'Mute',
-              'value': 'no-close',
-              'trailing': const Icon(Icons.arrow_forward_ios_rounded,
-                  color: Palette.inactiveSwitch, size: 16)
-            },
+            {'icon': Icons.volume_up_outlined, 'text': 'Mute', 'value': 'no-close', 'trailing': const Icon(Icons.arrow_forward_ios_rounded, color: Palette.inactiveSwitch, size: 16)},
           ];
         }
         items.addAll([
-          {
-            'icon': Icons.videocam_outlined,
-            'text': 'Video Call',
-            'value': 'video-call'
-          },
+          {'icon': Icons.videocam_outlined, 'text': 'Video Call', 'value': 'video-call'},
           {'icon': Icons.search, 'text': 'Search', 'value': 'search'},
-          {
-            'icon': Icons.wallpaper_rounded,
-            'text': 'Change Wallpaper',
-            'value': 'change-wallpaper'
-          },
-          {
-            'icon': Icons.cleaning_services,
-            'text': 'Clear History',
-            'value': 'clear-history'
-          },
-          {
-            'icon': Icons.delete_outline,
-            'text': 'Delete Chat',
-            'value': 'delete-chat'
-          },
+          {'icon': Icons.wallpaper_rounded, 'text': 'Change Wallpaper', 'value': 'change-wallpaper'},
+          {'icon': Icons.cleaning_services, 'text': 'Clear History', 'value': 'clear-history'},
+          {'icon': Icons.delete_outline, 'text': 'Delete Chat', 'value': 'delete-chat'},
         ]);
       }
     }
     final renderBox = context.findRenderObject() as RenderBox;
     final position = Offset(renderBox.size.width, -350);
-
     PopupMenuWidget.showPopupMenu(
-        context: context,
-        position: position,
-        items: items,
-        onSelected: _handlePopupMenuSelection);
+        context: context, position: position, items: items, onSelected: _handlePopupMenuSelection);
   }
 
   void _handlePopupMenuSelection(String value) {
@@ -1043,19 +946,8 @@ class _ChatScreen extends ConsumerState<ChatScreen>
           context,
           pickerTheme: const DateTimePickerTheme(
             backgroundColor: Palette.secondary,
-            itemTextStyle: TextStyle(
-              color: Palette.primaryText,
-              fontSize: 20,
-              fontWeight: FontWeight.w600,
-            ),
-            confirm: Text(
-              'Confirm',
-              style: TextStyle(
-                color: Palette.primary,
-                fontSize: 18,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
+            itemTextStyle: TextStyle(color: Palette.primaryText, fontSize: 20, fontWeight: FontWeight.w600),
+            confirm: Text('Confirm', style: TextStyle(color: Palette.primary, fontSize: 18, fontWeight: FontWeight.w500)),
           ),
           pickerMode: DateTimePickerMode.time,
           minDateTime: DateTime.now(),
@@ -1087,7 +979,6 @@ class _ChatScreen extends ConsumerState<ChatScreen>
         showMuteOptions = false;
         _setChatMute(true, null);
       case 'filter-content':
-        // TODO(marwan): send request to backend to filter content for this group
         showToastMessage('Filter content');
         break;
       default:
@@ -1130,11 +1021,11 @@ class _ChatScreen extends ConsumerState<ChatScreen>
       editMessage = message;
       replyMessage = null;
       debugPrint(message.content?.getContent());
-      _messageController.text =
-          message.content?.getContent() ?? 'what about this';
+      _messageController.text = message.content?.getContent() ?? 'what about this';
       debugPrint('${_messageController.text} look here');
     });
   }
+
   Future<void> _loadSavedMessages() async {
     try {
       final savedBox = Hive.box<MessageModel>('saved_messages');
