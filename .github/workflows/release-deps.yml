@@ -1,0 +1,76 @@
+name: Store Dependencies as GitHub Release
+
+on:
+  workflow_dispatch:
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.24.3'
+
+      - name: Install pub dependencies
+        run: flutter pub get
+
+      - name: Prepare Android project & download Gradle deps
+        run: flutter build apk --debug
+        continue-on-error: true
+
+      - name: Make gradlew executable
+        run: chmod +x android/gradlew
+
+      - name: Download ALL Gradle dependencies (even if build fails)
+        run: |
+          cd android
+          ./gradlew dependencies --no-daemon
+        continue-on-error: true
+
+      - name: Compress pub-cache
+        run: |
+          PUB_CACHE_DIR="${PUB_CACHE:-/home/runner/.pub-cache}"
+          if [ -d "$PUB_CACHE_DIR" ] && [ "$(ls -A $PUB_CACHE_DIR)" ]; then
+            echo "Compressing pub cache..."
+            tar -czf pub-cache.tar.gz -C "$PUB_CACHE_DIR" .
+          else
+            echo "ERROR: Pub cache directory is empty"
+            exit 1
+          fi
+
+      - name: Compress Gradle caches
+        run: |
+          if [ -d ~/.gradle/caches ] && [ "$(ls -A ~/.gradle/caches)" ]; then
+            tar -czf gradle-caches.tar.gz -C ~/.gradle/caches .
+          else
+            echo "WARNING: Gradle caches empty"
+          fi
+
+      - name: Compress Gradle wrapper
+        run: |
+          if [ -d ~/.gradle/wrapper ] && [ "$(ls -A ~/.gradle/wrapper)" ]; then
+            tar -czf gradle-wrapper.tar.gz -C ~/.gradle/wrapper .
+          else
+            echo "WARNING: Gradle wrapper empty"
+          fi
+
+      - name: Create GitHub Release and upload assets
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: deps-${{ github.run_number }}
+          name: "Dependencies Cache ${{ github.run_number }}"
+          body: |
+            فایل‌های کش برای بیلد آفلاین:
+            - pub-cache.tar.gz
+            - gradle-caches.tar.gz
+            - gradle-wrapper.tar.gz
+          files: |
+            pub-cache.tar.gz
+            gradle-caches.tar.gz
+            gradle-wrapper.tar.gz
+          fail_on_unmatched_files: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
