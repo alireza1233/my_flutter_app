@@ -1,4 +1,4 @@
-name: Download All Dependencies (Complete)
+name: Download All Dependencies (Safe Mode)
 
 on:
   workflow_dispatch:
@@ -15,38 +15,38 @@ jobs:
         with:
           flutter-version: '3.24.3'
 
-      # نصب وابستگی‌های pub
+      # نصب پکیج‌های pub
       - name: Install dependencies
         run: flutter pub get
 
-      # تولید فایل‌های g.dart (ضروری برای کامپایل)
-      - name: Generate code with build_runner
-        run: dart run build_runner build --delete-conflicting-outputs
+      # Precache موتور فلاتر برای android
+      - name: Precache Flutter artifacts
+        run: flutter precache --android
 
-      # بیلد debug (دانلود وابستگی‌های debug مانند arm64_v8a_debug)
-      - name: Build debug APK (triggers Gradle downloads for debug)
-        run: flutter build apk --debug
+      # دانلود وابستگی‌های Gradle با استفاده از task مخصوص Flutter
+      - name: Download Gradle dependencies via Flutter task
+        run: |
+          cd android
+          chmod +x gradlew
+          ./gradlew :app:downloadDebugAndroidDependencies --no-daemon
+          ./gradlew :app:downloadReleaseAndroidDependencies --no-daemon
 
-      # بیلد release (دانلود وابستگی‌های release مانند arm64_v8a_release)
-      - name: Build release APK (triggers Gradle downloads for release)
-        run: flutter build apk --release
-
-      # آپلود کل pub-cache (همه پکیج‌های Dart/Flutter)
+      # آپلود pub-cache
       - name: Upload pub-cache
         uses: actions/upload-artifact@v4
         with:
           name: pub-cache
           path: ~/.pub-cache
 
-      # آپلود کل پوشه .gradle (شامل caches, wrapper, daemon, ...)
-      - name: Upload entire .gradle folder
+      # آپلود کل .gradle
+      - name: Upload gradle-full
         uses: actions/upload-artifact@v4
         with:
           name: gradle-full
           path: ~/.gradle
 
-      # آپلود جداگانه wrapper (برای احتیاط)
-      - name: Upload gradle-wrapper separately
+      # آپلود wrapper (تضمین)
+      - name: Upload gradle-wrapper
         uses: actions/upload-artifact@v4
         with:
           name: gradle-wrapper
