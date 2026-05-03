@@ -1,0 +1,81 @@
+name: RAR Split and Push Dependencies
+
+on:
+  workflow_dispatch:
+
+jobs:
+  rar-split-push:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.24.3'
+
+      - name: Install pub dependencies
+        run: flutter pub get
+
+      - name: Prepare Android project & download Gradle deps
+        run: flutter build apk --debug
+        continue-on-error: true
+
+      - name: Make gradlew executable
+        run: chmod +x android/gradlew
+
+      - name: Download ALL Gradle dependencies
+        run: |
+          cd android
+          ./gradlew dependencies --no-daemon
+        continue-on-error: true
+
+      - name: Compress pub-cache
+        run: |
+          PUB_CACHE_DIR="${PUB_CACHE:-/home/runner/.pub-cache}"
+          if [ -d "$PUB_CACHE_DIR" ] && [ "$(ls -A $PUB_CACHE_DIR)" ]; then
+            tar -czf pub-cache.tar.gz -C "$PUB_CACHE_DIR" .
+          else
+            echo "ERROR: Pub cache empty"
+            exit 1
+          fi
+
+      - name: Compress Gradle caches
+        run: |
+          if [ -d ~/.gradle/caches ] && [ "$(ls -A ~/.gradle/caches)" ]; then
+            tar -czf gradle-caches.tar.gz -C ~/.gradle/caches .
+          fi
+
+      - name: Compress Gradle wrapper
+        run: |
+          if [ -d ~/.gradle/wrapper ] && [ "$(ls -A ~/.gradle/wrapper)" ]; then
+            tar -czf gradle-wrapper.tar.gz -C ~/.gradle/wrapper .
+          fi
+
+      - name: Install RAR
+        run: |
+          sudo apt-get update
+          sudo apt-get install rar -y
+
+      - name: Split tar.gz files into RAR volumes (80MB each, with recovery)
+        run: |
+          mkdir -p rar-parts
+          for file in pub-cache.tar.gz gradle-caches.tar.gz gradle-wrapper.tar.gz; do
+            if [ -f "$file" ]; then
+              base="${file%.tar.gz}"
+              echo "Creating RAR volumes for $file ..."
+              rar a -v80m -rr10% -ep1 "rar-parts/${base}.rar" "$file"
+            fi
+          done
+          ls -lh rar-parts/
+
+      - name: Commit and push RAR parts to repository
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "actions@github.com"
+          git add rar-parts/
+          git commit -m "Add RAR split parts (80MB each, recovery record) [skip ci]" || echo "No changes"
+          git push origin main
