@@ -23,11 +23,9 @@ import 'package:telware_cross_platform/features/chat/view/widget/sender_name_wid
 import 'package:telware_cross_platform/features/chat/view/widget/sticker_message_widget.dart';
 import 'package:telware_cross_platform/features/chat/view/widget/video_player_widget.dart';
 
-
 import '../../../../core/models/chat_model.dart';
 import '../screens/create_chat_screen.dart';
 import 'announcement_message_extention.dart';
-
 import 'floating_menu_overlay.dart';
 
 class MessageTileWidget extends ConsumerWidget {
@@ -86,7 +84,6 @@ class MessageTileWidget extends ConsumerWidget {
           isSentByMe: isSentByMe,
           userId: messageModel.senderId,
         ),
-        if (parentMessage != null) ParentMessage(parentMessage: parentMessage),
         Wrap(
           children: [
             Wrap(
@@ -111,13 +108,15 @@ class MessageTileWidget extends ConsumerWidget {
             )
           ],
         ),
-        (messageModel.parentMessage==null && chat?.type == ChatType.channel)?AnnouncementExtenstion(
-          isSentByMe: isSentByMe,
-          message: messageModel,
-          thread: thread,
-          chatId: chatId,
-          chatModel: chat,
-        ):SizedBox(),
+        (messageModel.parentMessage == null && chat?.type == ChatType.channel)
+            ? AnnouncementExtenstion(
+                isSentByMe: isSentByMe,
+                message: messageModel,
+                thread: thread,
+                chatId: chatId,
+                chatModel: chat,
+              )
+            : const SizedBox(),
       ],
     );
   }
@@ -243,6 +242,12 @@ class MessageTileWidget extends ConsumerWidget {
                     ],
                   ),
                 ),
+              // نمایش پیام اصلی (پاسخ داده شده) برای همه نوع پیام
+              if (parentMessage != null)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 4),
+                  child: ParentMessage(parentMessage: parentMessage),
+                ),
               Padding(
                 padding: EdgeInsets.only(top: isForwarded ? 25 : 0),
                 child: _createMessageTile(
@@ -260,19 +265,14 @@ class MessageTileWidget extends ConsumerWidget {
                 right: 0,
                 child: Container(
                   padding: const EdgeInsets.only(top: 5),
-                  // Add some space above the timestamp
                   child: Row(
                     children: [
                       if (isPinned) ...[
                         Transform.rotate(
-                          angle: 45 *
-                              (3.141592653589793 /
-                                  180), // Convert degrees to radians
+                          angle: 45 * (3.141592653589793 / 180),
                           child: const Icon(Icons.push_pin_rounded, size: 12),
                         ),
-                        const SizedBox(
-                          width: 2,
-                        )
+                        const SizedBox(width: 2),
                       ],
                       if (isEdited) ...[
                         const Text("edited",
@@ -280,9 +280,7 @@ class MessageTileWidget extends ConsumerWidget {
                               fontSize: 11,
                               color: Palette.primaryText,
                             )),
-                        const SizedBox(
-                          width: 2,
-                        )
+                        const SizedBox(width: 2),
                       ],
                       Text(
                         key: ValueKey(
