@@ -7,6 +7,7 @@ import 'package:hive/hive.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:telware_cross_platform/core/mock/constants_mock.dart';
 import 'package:telware_cross_platform/core/models/chat_model.dart';
+import 'package:telware_cross_platform/core/models/message_model.dart';
 import 'package:telware_cross_platform/core/models/user_model.dart';
 import 'package:telware_cross_platform/core/providers/token_provider.dart';
 import 'package:telware_cross_platform/core/providers/user_provider.dart';
@@ -289,7 +290,7 @@ class ChattingController {
       final savedBox = await Hive.openBox<MessageModel>('saved_messages');
       final localId = DateTime.now().millisecondsSinceEpoch.toString();
       final newMessage = MessageModel(
-        senderId: ref.read(userProvider)!.id!,
+        senderId: _ref.read(userProvider)!.id!,
         messageContentType: contentType,
         content: content,
         timestamp: DateTime.now(),
