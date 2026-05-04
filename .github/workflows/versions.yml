@@ -1,31 +1,35 @@
-name: Collect Full Build Environment Info
+name: Save Full Build Environment to Repository
 
 on:
   workflow_dispatch:
 
 jobs:
-  inspect:
+  save-env:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write        # اجازه commit و push به مخزن
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+          token: ${{ secrets.GITHUB_TOKEN }}
 
-      # نصب Flutter (برای دسترسی به flutter و dart)
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
           flutter-version: '3.24.3'
 
-      # تنظیم مسیر Android tools (adb, emulator, fastboot)
       - name: Set Android tools PATH
         run: |
           echo "$ANDROID_HOME/platform-tools" >> $GITHUB_PATH
           echo "$ANDROID_HOME/emulator" >> $GITHUB_PATH
-          echo "$ANDROID_HOME/tools/bin" >> $GITHUB_PATH
 
-      - name: Collect complete environment info
+      - name: Collect environment info
         run: |
-          OUTPUT_FILE="inspect_full.txt"
-          
+          mkdir -p env-info
+          OUTPUT_FILE="env-info/inspect_full.txt"
+
           echo "===== OS Info =====" > $OUTPUT_FILE
           uname -a >> $OUTPUT_FILE
           cat /etc/os-release >> $OUTPUT_FILE
@@ -101,17 +105,10 @@ jobs:
 
           echo "✅ Full environment saved to $OUTPUT_FILE"
 
-      - name: Upload environment info as artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: full-build-environment-info
-          path: inspect_full.txt
-
-      - name: Commit and push (optional)
+      - name: Commit and push environment info
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
-          git add inspect_full.txt
-          git commit -m "Update full environment info [skip ci]" || echo "No changes"
+          git add env-info/
+          git commit -m "Add full environment info [skip ci]" || echo "No changes to commit"
           git push origin main
-        continue-on-error: true
