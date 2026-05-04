@@ -1,59 +1,150 @@
-name: Save Full Build Log to Repository
+name: Collect Full Build Environment Info
 
 on:
-  workflow_dispatch:
+  workflow_dispatch:   # دستی اجرا بشه
+  push:
+    branches: [ main ]
 
 jobs:
-  save-log:
+  inspect:
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
-      - name: Collect system info
+      - name: Collect complete system and SDK info
         run: |
-          mkdir -p logs
-          {
-            echo "===== OS Info ====="
-            uname -a
-            lsb_release -a 2>/dev/null || echo "lsb_release not available"
-            echo "===== Java Version ====="
-            java -version 2>&1
-            echo "===== Android SDK Platforms ====="
-            ls -la /usr/local/lib/android/sdk/platforms/ 2>/dev/null || echo "No SDK platforms dir"
-            echo "===== Android NDK ====="
-            ls -la /usr/local/lib/android/sdk/ndk/ 2>/dev/null || echo "No NDK dir"
-          } | tee -a logs/inspect.txt
+          OUTPUT_FILE="inspect_full.txt"
+          
+          echo "===== OS Info =====" > $OUTPUT_FILE
+          uname -a >> $OUTPUT_FILE
+          cat /etc/os-release >> $OUTPUT_FILE
+          echo "" >> $OUTPUT_FILE
 
-      - name: Setup Flutter
-        uses: subosito/flutter-action@v2
-        with:
-          flutter-version: '3.24.3'
+          echo "===== Java Version =====" >> $OUTPUT_FILE
+          java -version 2>&1 >> $OUTPUT_FILE
+          echo "" >> $OUTPUT_FILE
 
-      - name: Collect Flutter & Gradle info
-        run: |
-          {
-            echo "===== Flutter Version ====="
-            flutter --version
-            echo "===== Android Project Gradle Wrapper ====="
-            if [ -f "android/gradle/wrapper/gradle-wrapper.properties" ]; then
-              cat android/gradle/wrapper/gradle-wrapper.properties
+          echo "===== Java Alternatives (if any) =====" >> $OUTPUT_FILE
+          update-java-alternatives -l 2>/dev/null >> $OUTPUT_FILE || echo "Not available" >> $OUTPUT_FILE
+          echo "" >> $OUTPUT_FILE
+
+          echo "===== Android SDK Root =====" >> $OUTPUT_FILE
+          echo "ANDROID_HOME: $ANDROID_HOME" >> $OUTPUT_FILE
+          echo "ANDROID_SDK_ROOT: $ANDROID_SDK_ROOT" >> $OUTPUT_FILE
+          ls -la $ANDROID_HOME 2>/dev/null >> $OUTPUT_FILE
+          echo "" >> $OUTPUT_FILE
+
+          echo "===== Android SDK Platforms (installed) =====" >> $OUTPUT_FILE
+          ls -la $ANDROID_HOME/platforms/ 2>/dev/null >> $OUTPUT_FILE || echo "No platforms found" >> $OUTPUT_FILE
+          echo "" >> $OUTPUT_FILE
+
+          echo "===== Android SDK Build-Tools =====" >> $OUTPUT_FILE
+          ls -la $ANDROID_HOME/build-tools/ 2>/dev/null >> $OUTPUT_FILE || echo "No build-tools found" >> $OUTPUT_FILE
+          echo "" >> $OUTPUT_FILE
+
+          echo "===== Android SDK Command-line Tools =====" >> $OUTPUT_FILE
+          ls -la $ANDROID_HOME/cmdline-tools/ 2>/dev/null >> $OUTPUT_FILE || echo "No cmdline-tools found" >> $OUTPUT_FILE
+          if [ -f "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" ]; then
+            $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --version 2>&1 >> $OUTPUT_FILE
+          fi
+          echo "" >> $OUTPUT_FILE
+
+          echo "===== Android NDK =====" >> $OUTPUT_FILE
+          ls -la $ANDROID_HOME/ndk/ 2>/dev/null >> $OUTPUT_FILE || echo "No NDK found" >> $OUTPUT_FILE
+          echo "ANDROID_NDK: $ANDROID_NDK" >> $OUTPUT_FILE
+          echo "ANDROID_NDK_HOME: $ANDROID_NDK_HOME" >> $OUTPUT_FILE
+          echo "ANDROID_NDK_LATEST_HOME: $ANDROID_NDK_LATEST_HOME" >> $OUTPUT_FILE
+          if [ -n "$ANDROID_NDK" ] && [ -d "$ANDROID_NDK" ]; then
+            echo "NDK version file:" >> $OUTPUT_FILE
+            cat $ANDROID_NDK/source.properties 2>/dev/null >> $OUTPUT_FILE
+          fi
+          echo "" >> $OUTPUT_FILE
+
+          echo "===== CMake (for NDK) =====" >> $OUTPUT_FILE
+          which cmake >> $OUTPUT_FILE
+          cmake --version 2>&1 >> $OUTPUT_FILE
+          echo "CMake from SDK:" >> $OUTPUT_FILE
+          ls -la $ANDROID_HOME/cmake/ 2>/dev/null >> $OUTPUT_FILE || echo "No CMake in SDK" >> $OUTPUT_FILE
+          echo "" >> $OUTPUT_FILE
+
+          echo "===== Android Emulator & Tools =====" >> $OUTPUT_FILE
+          emulator -version 2>&1 >> $OUTPUT_FILE || echo "emulator not in PATH" >> $OUTPUT_FILE
+          adb version 2>&1 >> $OUTPUT_FILE || echo "adb not found" >> $OUTPUT_FILE
+          fastboot --version 2>&1 >> $OUTPUT_FILE || echo "fastboot not found" >> $OUTPUT_FILE
+          echo "" >> $OUTPUT_FILE
+
+          echo "===== Flutter Version =====" >> $OUTPUT_FILE
+          flutter --version 2>&1 >> $OUTPUT_FILE
+          echo "Flutter doctor:" >> $OUTPUT_FILE
+          flutter doctor -v 2>&1 >> $OUTPUT_FILE
+          echo "" >> $OUTPUT_FILE
+
+          echo "===== Dart Version =====" >> $OUTPUT_FILE
+          dart --version 2>&1 >> $OUTPUT_FILE
+          echo "" >> $OUTPUT_FILE
+
+          echo "===== Gradle (system) =====" >> $OUTPUT_FILE
+          which gradle >> $OUTPUT_FILE
+          gradle --version 2>&1 >> $OUTPUT_FILE || echo "Gradle not in PATH" >> $OUTPUT_FILE
+          echo "" >> $OUTPUT_FILE
+
+          echo "===== Android Project Gradle Wrapper (if exists) =====" >> $OUTPUT_FILE
+          if [ -f "android/gradle/wrapper/gradle-wrapper.properties" ]; then
+            cat android/gradle/wrapper/gradle-wrapper.properties >> $OUTPUT_FILE
+          else
+            echo "No Android project found in ./android" >> $OUTPUT_FILE
+          fi
+          echo "" >> $OUTPUT_FILE
+
+          echo "===== AGP in build.gradle (if any) =====" >> $OUTPUT_FILE
+          if [ -f "android/build.gradle" ]; then
+            grep -E "com.android.tools.build:gradle" android/build.gradle >> $OUTPUT_FILE || echo "AGP not found" >> $OUTPUT_FILE
+          else
+            echo "android/build.gradle not found" >> $OUTPUT_FILE
+          fi
+          echo "" >> $OUTPUT_FILE
+
+          echo "===== Environment Variables (filtered) =====" >> $OUTPUT_FILE
+          env | sort | grep -E "JAVA|ANDROID|GRADLE|FLUTTER|PATH|HOME|GITHUB" >> $OUTPUT_FILE
+          echo "" >> $OUTPUT_FILE
+
+          echo "===== Git Version =====" >> $OUTPUT_FILE
+          git --version 2>&1 >> $OUTPUT_FILE
+          echo "" >> $OUTPUT_FILE
+
+          echo "===== System Packages (common build tools) =====" >> $OUTPUT_FILE
+          for pkg in zip unzip curl wget make gcc g++; do
+            version=$(dpkg -l | grep -E "ii\s+$pkg" | head -1)
+            if [ -n "$version" ]; then
+              echo "$pkg: $version" >> $OUTPUT_FILE
             else
-              echo "gradle-wrapper.properties not found"
+              echo "$pkg: not installed" >> $OUTPUT_FILE
             fi
-            echo "===== AGP in build.gradle (if any) ====="
-            if [ -f "android/build.gradle" ]; then
-              grep "com.android.tools.build:gradle:" android/build.gradle || echo "Not found"
-            fi
-            echo "===== Environment Variables ====="
-            env | sort
-          } | tee -a logs/inspect.txt
+          done
+          echo "" >> $OUTPUT_FILE
 
-      - name: Commit and push logs
+          echo "===== Docker (if any) =====" >> $OUTPUT_FILE
+          docker --version 2>&1 >> $OUTPUT_FILE || echo "Docker not found" >> $OUTPUT_FILE
+          echo "" >> $OUTPUT_FILE
+
+          echo "===== Memory & CPU info =====" >> $OUTPUT_FILE
+          free -h >> $OUTPUT_FILE
+          nproc >> $OUTPUT_FILE
+          lscpu | grep "Model name" >> $OUTPUT_FILE
+          
+          echo "✅ Full environment info saved to $OUTPUT_FILE"
+
+      - name: Upload artifact (optional)
+        uses: actions/upload-artifact@v4
+        with:
+          name: full-build-environment-info
+          path: inspect_full.txt
+
+      - name: Commit and push the info file (optional)
         run: |
-          git config --global user.name "github-actions[bot]"
-          git config --global user.email "github-actions[bot]@users.noreply.github.com"
-          git add logs/
-          git commit -m "Add full build inspection log [skip ci]" || echo "No changes to commit"
-          git push origin main
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add inspect_full.txt
+          git commit -m "Update full environment info [skip ci]" || echo "No changes to commit"
+          git push
