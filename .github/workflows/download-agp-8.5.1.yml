@@ -1,4 +1,4 @@
-name: Download AGP 8.5.1 and commit to repo
+name: agp new repo
 
 on:
   workflow_dispatch:
