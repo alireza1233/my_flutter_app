@@ -1,87 +1,59 @@
-name: Inspect Complete Build Environment
+name: Save Full Build Log to Repository
 
-on: workflow_dispatch
+on:
+  workflow_dispatch:
 
 jobs:
-  inspect:
-    name: Inspect Environment
+  save-log:
     runs-on: ubuntu-latest
-
+    permissions:
+      contents: write
     steps:
-      # 1. اطلاعات پایه سیستم
-      - name: Print OS Info
-        run: |
-          echo "=== OS Info ==="
-          uname -a
-          lsb_release -a
-          echo "==================="
+      - uses: actions/checkout@v4
 
-      # 2. بررسی Java و JDK (ورژن پیش‌فرض رانر)
-      - name: Check Java Version
+      - name: Collect system info
         run: |
-          echo "=== Java Version ==="
-          java -version
-          echo "==================="
+          mkdir -p logs
+          {
+            echo "===== OS Info ====="
+            uname -a
+            lsb_release -a 2>/dev/null || echo "lsb_release not available"
+            echo "===== Java Version ====="
+            java -version 2>&1
+            echo "===== Android SDK Platforms ====="
+            ls -la /usr/local/lib/android/sdk/platforms/ 2>/dev/null || echo "No SDK platforms dir"
+            echo "===== Android NDK ====="
+            ls -la /usr/local/lib/android/sdk/ndk/ 2>/dev/null || echo "No NDK dir"
+          } | tee -a logs/inspect.txt
 
-      # 3. بررسی Android SDK
-      - name: Check Android SDK
-        run: |
-          echo "=== Android SDK Directories ==="
-          ls -la /usr/local/lib/android/sdk/platforms/
-          echo "================================"
-
-      # 4. بررسی Android NDK
-      - name: Check Android NDK
-        run: |
-          echo "=== Android NDK Directories ==="
-          ls -la /usr/local/lib/android/sdk/ndk/
-          echo "==============================="
-
-      # 5. نصب و بررسی Flutter
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
           flutter-version: '3.24.3'
 
-      - name: Check Flutter Version
+      - name: Collect Flutter & Gradle info
         run: |
-          echo "=== Flutter Version ==="
-          flutter --version
-          echo "======================="
+          {
+            echo "===== Flutter Version ====="
+            flutter --version
+            echo "===== Android Project Gradle Wrapper ====="
+            if [ -f "android/gradle/wrapper/gradle-wrapper.properties" ]; then
+              cat android/gradle/wrapper/gradle-wrapper.properties
+            else
+              echo "gradle-wrapper.properties not found"
+            fi
+            echo "===== AGP in build.gradle (if any) ====="
+            if [ -f "android/build.gradle" ]; then
+              grep "com.android.tools.build:gradle:" android/build.gradle || echo "Not found"
+            fi
+            echo "===== Environment Variables ====="
+            env | sort
+          } | tee -a logs/inspect.txt
 
-      # 6. بررسی Gradle Wrapper و AGP
-      - name: Check Gradle & AGP
+      - name: Commit and push logs
         run: |
-          # اگر فایل gradle-wrapper.properties وجود داشته باشد
-          if [ -f "android/gradle/wrapper/gradle-wrapper.properties" ]; then
-            echo "=== Gradle Wrapper Version ==="
-            grep "distributionUrl" android/gradle/wrapper/gradle-wrapper.properties
-            echo "=============================="
-          fi
-          
-          # استخراج نسخه AGP از build.gradle
-          if [ -f "android/build.gradle" ]; then
-            echo "=== AGP Version from build.gradle ==="
-            grep "com.android.tools.build:gradle:" android/build.gradle || echo "AGP version not found in build.gradle"
-            echo "====================================="
-          fi
-
-      # 7. بررسی متغیرهای محیطی مهم
-      - name: Print Important Environment Variables
-        run: |
-          echo "=== Home and Env Vars ==="
-          echo "HOME: $HOME"
-          echo "ANDROID_HOME: $ANDROID_HOME"
-          echo "ANDROID_SDK_ROOT: $ANDROID_SDK_ROOT"
-          echo "JAVA_HOME: $JAVA_HOME"
-          echo "GRADLE_USER_HOME: $GRADLE_USER_HOME"
-          echo "========================="
-
-      # 8. اطلاعات دقیق از کش‌های Gradle
-      - name: Check Gradle Caches
-        run: |
-          if [ -d "$HOME/.gradle/caches/modules-2/files-2.1/com.android.tools.build/gradle/" ]; then
-            echo "=== AGP Versions in Cache ==="
-            ls "$HOME/.gradle/caches/modules-2/files-2.1/com.android.tools.build/gradle/"
-            echo "============================="
-          fi
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git add logs/
+          git commit -m "Add full build inspection log [skip ci]" || echo "No changes to commit"
+          git push origin main
