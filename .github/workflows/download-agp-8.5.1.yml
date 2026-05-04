@@ -1,0 +1,23 @@
+name: Download AGP 8.5.1
+
+on:
+  workflow_dispatch:
+
+jobs:
+  download:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download AGP 8.5.1 using Gradle
+        run: |
+          mkdir -p temp
+          cd temp
+          echo "apply plugin: 'java'" > build.gradle
+          echo "repositories { mavenCentral() }" >> build.gradle
+          echo "dependencies { implementation 'com.android.tools.build:gradle:8.5.1' }" >> build.gradle
+          gradle init --type java-application --dsl groovy --incubating
+          gradle build --refresh-dependencies --no-daemon
+      - name: Upload Gradle caches (including AGP 8.5.1)
+        uses: actions/upload-artifact@v4
+        with:
+          name: agp-8.5.1-cache
+          path: ~/.gradle/caches/modules-2/files-2.1/com.android.tools.build/gradle/8.5.1/
