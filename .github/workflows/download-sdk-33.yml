@@ -11,21 +11,40 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Download platform-33_r01.zip from Google
-        shell: cmd
+        shell: pwsh
         run: |
-          curl -o platform-33.zip https://dl.google.com/android/repository/platform-33_r01.zip
+          Write-Host "Downloading platform-33_r01.zip ..."
+          Invoke-WebRequest -Uri "https://dl.google.com/android/repository/platform-33_r01.zip" -OutFile "platform-33.zip"
 
-      - name: Extract zip
-        shell: cmd
+      - name: Extract zip with PowerShell
+        shell: pwsh
         run: |
-          mkdir android-33-temp
-          tar -xf platform-33.zip -C android-33-temp
+          Expand-Archive -Path "platform-33.zip" -DestinationPath "extracted" -Force
+          # پیدا کردن تمام فایل‌ها و پوشه‌های داخل extracted
+          Get-ChildItem -Path "extracted" -Recurse
 
-      - name: Prepare final android-33 folder structure
-        shell: cmd
+      - name: Create android-33 folder and move contents
+        shell: pwsh
         run: |
-          mkdir android-33
-          xcopy /E /I android-33-temp\android-33\* android-33\
+          New-Item -ItemType Directory -Force -Path "android-33"
+          # اگر داخل extracted یک پوشه android-33 وجود دارد
+          if (Test-Path "extracted\android-33") {
+            Move-Item -Path "extracted\android-33\*" -Destination "android-33" -Force
+          } else {
+            # در غیر اینصورت همه چیز را به android-33 منتقل کن
+            Move-Item -Path "extracted\*" -Destination "android-33" -Force
+          }
+
+      - name: Verify android.jar exists
+        shell: pwsh
+        run: |
+          if (Test-Path "android-33\android.jar") {
+            Write-Host "✅ android.jar found - SDK is valid."
+          } else {
+            Write-Host "❌ android.jar not found. Listing contents:"
+            Get-ChildItem -Recurse android-33 | Select-Object -First 20
+            exit 1
+          }
 
       - name: Create final archive
         shell: pwsh
