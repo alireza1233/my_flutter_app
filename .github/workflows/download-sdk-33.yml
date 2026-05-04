@@ -1,14 +1,18 @@
-name: Download Android SDK Platform 33
+name: Download and Commit Android SDK Platform 33
 
 on:
   workflow_dispatch:
 
 jobs:
-  download:
+  download-and-commit:
     runs-on: windows-latest
+    permissions:
+      contents: write   # برای مجاز بودن push به مخزن
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Download platform-33_r01.zip
         shell: pwsh
@@ -28,24 +32,34 @@ jobs:
             exit 1
           }
 
-      - name: Verify android.jar exists in android-33
+      - name: Create target directory "new sdk 33"
         shell: pwsh
         run: |
-          if (Test-Path "extracted\android-33\android.jar") {
-            Write-Host "✅ android.jar found - SDK is valid."
+          # حذف پوشه قبلی اگر وجود داره
+          if (Test-Path "new sdk 33") { Remove-Item -Recurse -Force "new sdk 33" }
+          New-Item -ItemType Directory -Force -Path "new sdk 33"
+
+      - name: Copy SDK contents into "new sdk 33"
+        shell: pwsh
+        run: |
+          Copy-Item -Path "extracted\android-33\*" -Destination "new sdk 33" -Recurse -Force
+
+      - name: Verify android.jar exists
+        shell: pwsh
+        run: |
+          if (Test-Path "new sdk 33\android.jar") {
+            Write-Host "✅ android.jar found - SDK is ready."
           } else {
-            Write-Host "❌ android.jar not found. Listing contents:"
-            Get-ChildItem -Recurse "extracted" | Select-Object -First 20
+            Write-Host "❌ android.jar not found!"
+            Get-ChildItem -Recurse "new sdk 33" | Select-Object -First 20
             exit 1
           }
 
-      - name: Create final archive (android-33-platform.zip)
+      - name: Commit and push to repository
         shell: pwsh
         run: |
-          Compress-Archive -Path "extracted\android-33\*" -DestinationPath "android-33-platform.zip" -Force
-
-      - name: Upload artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: android-33-platform
-          path: android-33-platform.zip
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add "new sdk 33"
+          git diff --quiet && git diff --staged --quiet || git commit -m "Add Android SDK Platform 33 to 'new sdk 33' folder"
+          git push origin HEAD:main
