@@ -1,23 +1,19 @@
-name: agp new repoo
+name: Get AGP 8.5.1 Correctly
 
 on:
   workflow_dispatch:
 
 jobs:
-  save:
+  download:
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
     steps:
-      - uses: actions/checkout@v4
-
       - name: Set up JDK 17
         uses: actions/setup-java@v4
         with:
           distribution: 'temurin'
           java-version: '17'
 
-      - name: Download AGP 8.5.1 using Gradle
+      - name: Create Gradle project and resolve AGP 8.5.1
         run: |
           mkdir -p gradle-project
           cd gradle-project
@@ -40,17 +36,15 @@ jobs:
               implementation 'com.android.tools.build:gradle:8.5.1'
           }
           EOF
-          gradle dependencies --refresh-dependencies --no-daemon
+          gradle dependencies --no-daemon
 
-      - name: Copy AGP 8.5.1 cache to repo folder
+      - name: Copy AGP 8.5.1 folder
         run: |
-          mkdir -p agp-cache/8.5.1
-          cp -r ~/.gradle/caches/modules-2/files-2.1/com.android.tools.build/gradle/8.5.1/* agp-cache/8.5.1/
+          mkdir -p agp-8.5.1
+          cp -r ~/.gradle/caches/modules-2/files-2.1/com.android.tools.build/gradle/8.5.1 agp-8.5.1/
 
-      - name: Commit and push
-        run: |
-          git config --global user.name "github-actions[bot]"
-          git config --global user.email "github-actions[bot]@users.noreply.github.com"
-          git add agp-cache/
-          git commit -m "Add AGP 8.5.1 cache files [skip ci]" || echo "No changes"
-          git push origin main
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: agp-8.5.1-full
+          path: agp-8.5.1/
