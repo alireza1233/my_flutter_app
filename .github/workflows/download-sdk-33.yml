@@ -20,7 +20,6 @@ jobs:
         shell: pwsh
         run: |
           Expand-Archive -Path "platform-33.zip" -DestinationPath "extracted" -Force
-          # داخل extracted یه پوشه android-13 وجود داره
           if (Test-Path "extracted\android-13") {
             Rename-Item -Path "extracted\android-13" -NewName "android-33"
           } else {
@@ -29,7 +28,7 @@ jobs:
             exit 1
           }
 
-      - Name: Verify android.jar exists in android-33
+      - name: Verify android.jar exists in android-33
         shell: pwsh
         run: |
           if (Test-Path "extracted\android-33\android.jar") {
