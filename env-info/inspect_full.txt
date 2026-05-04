@@ -1,0 +1,262 @@
+===== OS Info =====
+Linux runnervmeorf1 6.17.0-1010-azure #10~24.04.1-Ubuntu SMP Fri Mar  6 22:00:57 UTC 2026 x86_64 x86_64 x86_64 GNU/Linux
+PRETTY_NAME="Ubuntu 24.04.4 LTS"
+NAME="Ubuntu"
+VERSION_ID="24.04"
+VERSION="24.04.4 LTS (Noble Numbat)"
+VERSION_CODENAME=noble
+ID=ubuntu
+ID_LIKE=debian
+HOME_URL="https://www.ubuntu.com/"
+SUPPORT_URL="https://help.ubuntu.com/"
+BUG_REPORT_URL="https://bugs.launchpad.net/ubuntu/"
+PRIVACY_POLICY_URL="https://www.ubuntu.com/legal/terms-and-policies/privacy-policy"
+UBUNTU_CODENAME=noble
+LOGO=ubuntu-logo
+
+===== Java Version =====
+
+===== Android SDK =====
+ANDROID_HOME: /usr/local/lib/android/sdk
+ANDROID_SDK_ROOT: /usr/local/lib/android/sdk
+Platforms:
+total 60
+drwxrwxrwx 15 root root 4096 Apr 13 23:01 .
+drwxrwxrwx 11 root root 4096 Apr 13 23:02 ..
+drwxrwxrwx  6 root root 4096 Apr 13 23:01 android-34
+drwxrwxrwx  6 root root 4096 Apr 13 23:01 android-34-ext10
+drwxrwxrwx  6 root root 4096 Apr 13 23:01 android-34-ext11
+drwxrwxrwx  6 root root 4096 Apr 13 23:00 android-34-ext12
+drwxrwxrwx  6 root root 4096 Apr 13 23:00 android-34-ext8
+drwxrwxrwx  6 root root 4096 Apr 13 23:00 android-35
+drwxrwxrwx  6 root root 4096 Apr 13 23:00 android-35-ext14
+drwxrwxrwx  6 root root 4096 Apr 13 23:00 android-35-ext15
+drwxrwxrwx  6 root root 4096 Apr 13 23:00 android-36
+drwxrwxrwx  6 root root 4096 Apr 13 23:00 android-36-ext18
+drwxrwxrwx  6 root root 4096 Apr 13 23:00 android-36-ext19
+drwxrwxrwx  6 root root 4096 Apr 13 23:00 android-36.1
+drwxrwxrwx  6 root root 4096 Apr 13 23:00 android-37.0
+Build-tools:
+total 32
+drwxrwxrwx  8 root root 4096 Apr 13 23:00 .
+drwxrwxrwx 11 root root 4096 Apr 13 23:02 ..
+drwxrwxrwx  6 root root 4096 Apr 13 23:00 34.0.0
+drwxrwxrwx  6 root root 4096 Apr 13 23:00 35.0.0
+drwxrwxrwx  6 root root 4096 Apr 13 23:00 35.0.1
+drwxrwxrwx  6 root root 4096 Apr 13 23:00 36.0.0
+drwxrwxrwx  6 root root 4096 Apr 13 23:00 36.1.0
+drwxrwxrwx  6 root root 4096 Apr 13 23:00 37.0.0
+
+===== Android NDK =====
+total 20
+drwxrwxrwx  5 root root 4096 Apr 13 23:02 .
+drwxrwxrwx 11 root root 4096 Apr 13 23:02 ..
+drwxrwxrwx 11 root root 4096 Apr 13 23:02 27.3.13750724
+drwxrwxrwx 11 root root 4096 Apr 13 23:01 28.2.13676358
+drwxrwxrwx 11 root root 4096 Apr 13 23:01 29.0.14206865
+Pkg.Desc = Android NDK
+Pkg.Revision = 27.3.13750724
+Pkg.BaseRevision = 27.3.13750724
+Pkg.ReleaseName = r27d
+
+===== Android Emulator, ADB, Fastboot =====
+emulator not found
+Android Debug Bridge version 1.0.41
+Version 37.0.0-14910828
+Installed as /usr/local/lib/android/sdk/platform-tools/adb
+Running on Linux 6.17.0-1010-azure (x86_64)
+fastboot version 37.0.0-14910828
+Installed as /usr/local/lib/android/sdk/platform-tools/fastboot
+
+===== Flutter & Dart =====
+Flutter 3.24.3 • channel stable • https://github.com/flutter/flutter.git
+Framework • revision 2663184aa7 (1 year, 8 months ago) • 2024-09-11 16:27:48 -0500
+Engine • revision 36335019a8
+Tools • Dart 3.5.3 • DevTools 2.37.3
+Dart SDK version: 3.5.3 (stable) (Wed Sep 11 16:22:47 2024 +0000) on "linux_x64"
+Flutter doctor -v:
+
+  ╔════════════════════════════════════════════════════════════════════════════╗
+  ║                 Welcome to Flutter! - https://flutter.dev                  ║
+  ║                                                                            ║
+  ║ The Flutter tool uses Google Analytics to anonymously report feature usage ║
+  ║ statistics and basic crash reports. This data is used to help improve      ║
+  ║ Flutter tools over time.                                                   ║
+  ║                                                                            ║
+  ║ Flutter tool analytics are not sent on the very first run. To disable      ║
+  ║ reporting, type 'flutter config --no-analytics'. To display the current    ║
+  ║ setting, type 'flutter config'. If you opt out of analytics, an opt-out    ║
+  ║ event will be sent, and then no further information will be sent by the    ║
+  ║ Flutter tool.                                                              ║
+  ║                                                                            ║
+  ║ By downloading the Flutter SDK, you agree to the Google Terms of Service.  ║
+  ║ The Google Privacy Policy describes how data is handled in this service.   ║
+  ║                                                                            ║
+  ║ Moreover, Flutter includes the Dart SDK, which may send usage metrics and  ║
+  ║ crash reports to Google.                                                   ║
+  ║                                                                            ║
+  ║ Read about data we send with crash reports:                                ║
+  ║ https://flutter.dev/to/crash-reporting                                     ║
+  ║                                                                            ║
+  ║ See Google's privacy policy:                                               ║
+  ║ https://policies.google.com/privacy                                        ║
+  ║                                                                            ║
+  ║ To disable animations in this tool, use                                    ║
+  ║ 'flutter config --no-cli-animations'.                                      ║
+  ╚════════════════════════════════════════════════════════════════════════════╝
+
+[✓] Flutter (Channel stable, 3.24.3, on Ubuntu 24.04.4 LTS 6.17.0-1010-azure, locale C.UTF-8)
+    • Flutter version 3.24.3 on channel stable at /opt/hostedtoolcache/flutter/stable-3.24.3-x64/flutter
+    • Upstream repository https://github.com/flutter/flutter.git
+    • Framework revision 2663184aa7 (1 year, 8 months ago), 2024-09-11 16:27:48 -0500
+    • Engine revision 36335019a8
+    • Dart version 3.5.3
+    • DevTools version 2.37.3
+
+[!] Android toolchain - develop for Android devices (Android SDK version 37.0.0)
+    • Android SDK at /usr/local/lib/android/sdk
+    • Platform android-37.0, build-tools 37.0.0
+    • ANDROID_HOME = /usr/local/lib/android/sdk
+    • ANDROID_SDK_ROOT = /usr/local/lib/android/sdk
+    • Java binary at: /usr/lib/jvm/temurin-17-jdk-amd64/bin/java
+    • Java version OpenJDK Runtime Environment Temurin-17.0.18+8 (build 17.0.18+8)
+    ! Some Android licenses not accepted. To resolve this, run: flutter doctor --android-licenses
+
+[✓] Chrome - develop for the web
+    • Chrome at google-chrome
+
+[✗] Linux toolchain - develop for Linux desktop
+    • Ubuntu clang version 18.1.3 (1ubuntu1)
+    • cmake version 3.31.6
+    • ninja version 1.13.2
+    • pkg-config version 1.8.1
+    ✗ GTK 3.0 development libraries are required for Linux development.
+      They are likely available from your distribution (e.g.: apt install libgtk-3-dev)
+
+[!] Android Studio (not installed)
+    • Android Studio not found; download from https://developer.android.com/studio/index.html
+      (or visit https://flutter.dev/to/linux-android-setup for detailed instructions).
+
+[✓] Connected device (2 available)
+    • Linux (desktop) • linux  • linux-x64      • Ubuntu 24.04.4 LTS 6.17.0-1010-azure
+    • Chrome (web)    • chrome • web-javascript • Google Chrome 147.0.7727.55
+
+[✓] Network resources
+    • All expected network resources are available.
+
+! Doctor found issues in 3 categories.
+
+===== Gradle (system) =====
+
+Welcome to Gradle 9.4.1!
+
+Here are the highlights of this release:
+ - Java 26 support
+ - Non-class-based JVM tests
+ - Enhanced console progress bar
+
+For more details see https://docs.gradle.org/9.4.1/release-notes.html
+
+
+------------------------------------------------------------
+Gradle 9.4.1
+------------------------------------------------------------
+
+Build time:    2026-03-19 08:46:28 UTC
+Revision:      2d6327017519d23b96af35865dc997fcb544fb40
+
+Kotlin:        2.3.0
+Groovy:        4.0.29
+Ant:           Apache Ant(TM) version 1.10.15 compiled on August 25 2024
+Launcher JVM:  17.0.18 (Eclipse Adoptium 17.0.18+8)
+Daemon JVM:    /usr/lib/jvm/temurin-17-jdk-amd64 (no Daemon JVM specified, using current Java home)
+OS:            Linux 6.17.0-1010-azure amd64
+
+
+===== Project Gradle Wrapper =====
+distributionBase=GRADLE_USER_HOME
+distributionPath=wrapper/dists
+zipStoreBase=GRADLE_USER_HOME
+zipStorePath=wrapper/dists
+distributionUrl=https\://services.gradle.org/distributions/gradle-8.7-all.zip
+
+===== AGP version =====
+        classpath 'com.android.tools.build:gradle:8.5.2'
+
+===== Environment Variables (filtered) =====
+ANDROID_HOME=/usr/local/lib/android/sdk
+ANDROID_NDK=/usr/local/lib/android/sdk/ndk/27.3.13750724
+ANDROID_NDK_HOME=/usr/local/lib/android/sdk/ndk/27.3.13750724
+ANDROID_NDK_LATEST_HOME=/usr/local/lib/android/sdk/ndk/29.0.14206865
+ANDROID_NDK_ROOT=/usr/local/lib/android/sdk/ndk/27.3.13750724
+ANDROID_SDK_ROOT=/usr/local/lib/android/sdk
+ANT_HOME=/usr/share/ant
+FLUTTER_ROOT=/opt/hostedtoolcache/flutter/stable-3.24.3-x64/flutter
+GITHUB_ACTION=__run_2
+GITHUB_ACTIONS=true
+GITHUB_ACTION_REF=
+GITHUB_ACTION_REPOSITORY=
+GITHUB_ACTOR=alireza1233
+GITHUB_ACTOR_ID=55350212
+GITHUB_API_URL=https://api.github.com
+GITHUB_BASE_REF=
+GITHUB_ENV=/home/runner/work/_temp/_runner_file_commands/set_env_b05ea50e-88b3-434a-8608-36724694b858
+GITHUB_EVENT_NAME=workflow_dispatch
+GITHUB_EVENT_PATH=/home/runner/work/_temp/_github_workflow/event.json
+GITHUB_GRAPHQL_URL=https://api.github.com/graphql
+GITHUB_HEAD_REF=
+GITHUB_JOB=save-env
+GITHUB_OUTPUT=/home/runner/work/_temp/_runner_file_commands/set_output_b05ea50e-88b3-434a-8608-36724694b858
+GITHUB_PATH=/home/runner/work/_temp/_runner_file_commands/add_path_b05ea50e-88b3-434a-8608-36724694b858
+GITHUB_REF=refs/heads/main
+GITHUB_REF_NAME=main
+GITHUB_REF_PROTECTED=false
+GITHUB_REF_TYPE=branch
+GITHUB_REPOSITORY=alireza1233/my_flutter_app
+GITHUB_REPOSITORY_ID=1225013174
+GITHUB_REPOSITORY_OWNER=alireza1233
+GITHUB_REPOSITORY_OWNER_ID=55350212
+GITHUB_RETENTION_DAYS=90
+GITHUB_RUN_ATTEMPT=1
+GITHUB_RUN_ID=25349057632
+GITHUB_RUN_NUMBER=7
+GITHUB_SERVER_URL=https://github.com
+GITHUB_SHA=0c03148a3af39a4f2e957f0cf61112dee7e6417e
+GITHUB_STATE=/home/runner/work/_temp/_runner_file_commands/save_state_b05ea50e-88b3-434a-8608-36724694b858
+GITHUB_STEP_SUMMARY=/home/runner/work/_temp/_runner_file_commands/step_summary_b05ea50e-88b3-434a-8608-36724694b858
+GITHUB_TRIGGERING_ACTOR=alireza1233
+GITHUB_WORKFLOW=Save Full Build Environment to Repository
+GITHUB_WORKFLOW_REF=alireza1233/my_flutter_app/.github/workflows/versions.yml@refs/heads/main
+GITHUB_WORKFLOW_SHA=0c03148a3af39a4f2e957f0cf61112dee7e6417e
+GITHUB_WORKSPACE=/home/runner/work/my_flutter_app/my_flutter_app
+GRADLE_HOME=/usr/share/gradle-9.4.1
+HOME=/home/runner
+HOMEBREW_CLEANUP_PERIODIC_FULL_DAYS=3650
+HOMEBREW_NO_AUTO_UPDATE=1
+JAVA_HOME=/usr/lib/jvm/temurin-17-jdk-amd64
+JAVA_HOME_11_X64=/usr/lib/jvm/temurin-11-jdk-amd64
+JAVA_HOME_17_X64=/usr/lib/jvm/temurin-17-jdk-amd64
+JAVA_HOME_21_X64=/usr/lib/jvm/temurin-21-jdk-amd64
+JAVA_HOME_25_X64=/usr/lib/jvm/temurin-25-jdk-amd64
+JAVA_HOME_8_X64=/usr/lib/jvm/temurin-8-jdk-amd64
+PATH=/usr/local/lib/android/sdk/emulator:/usr/local/lib/android/sdk/platform-tools:/home/runner/.pub-cache/bin:/opt/hostedtoolcache/flutter/stable-3.24.3-x64/flutter/bin/cache/dart-sdk/bin:/opt/hostedtoolcache/flutter/stable-3.24.3-x64/flutter/bin:/snap/bin:/home/runner/.local/bin:/opt/pipx_bin:/home/runner/.cargo/bin:/home/runner/.config/composer/vendor/bin:/usr/local/.ghcup/bin:/home/runner/.dotnet/tools:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin
+PIPX_HOME=/opt/pipx
+SELENIUM_JAR_PATH=/usr/share/java/selenium-server.jar
+SWIFT_PATH=/usr/share/swift/usr/bin
+XDG_CONFIG_HOME=/home/runner/.config
+
+===== Git & System Packages =====
+git version 2.53.0
+zip: ii  zip                                      3.0-13ubuntu0.2                                  amd64        Archiver for .zip files
+unzip: ii  unzip                                    6.0-28ubuntu4.1                                  amd64        De-archiver for .zip files
+curl: ii  curl                                     8.5.0-2ubuntu10.8                                amd64        command line tool for transferring data with URL syntax
+wget: ii  wget                                     1.21.4-1ubuntu4.1                                amd64        retrieves files from the web
+make: ii  make                                     4.3-4.1build2                                    amd64        utility for directing compilation
+gcc: ii  gcc                                      4:13.2.0-7ubuntu1                                amd64        GNU C compiler
+
+===== CPU & Memory =====
+               total        used        free      shared  buff/cache   available
+Mem:            15Gi       1.1Gi        10Gi        47Mi       4.8Gi        14Gi
+Swap:          3.0Gi          0B       3.0Gi
+4
+Model name:                              AMD EPYC 9V74 80-Core Processor
