@@ -10,46 +10,40 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Download platform-33_r01.zip from Google
+      - name: Download platform-33_r01.zip
         shell: pwsh
         run: |
           Write-Host "Downloading platform-33_r01.zip ..."
           Invoke-WebRequest -Uri "https://dl.google.com/android/repository/platform-33_r01.zip" -OutFile "platform-33.zip"
 
-      - name: Extract zip with PowerShell
+      - name: Extract and rename android-13 to android-33
         shell: pwsh
         run: |
           Expand-Archive -Path "platform-33.zip" -DestinationPath "extracted" -Force
-          # پیدا کردن تمام فایل‌ها و پوشه‌های داخل extracted
-          Get-ChildItem -Path "extracted" -Recurse
-
-      - name: Create android-33 folder and move contents
-        shell: pwsh
-        run: |
-          New-Item -ItemType Directory -Force -Path "android-33"
-          # اگر داخل extracted یک پوشه android-33 وجود دارد
-          if (Test-Path "extracted\android-33") {
-            Move-Item -Path "extracted\android-33\*" -Destination "android-33" -Force
+          # داخل extracted یه پوشه android-13 وجود داره
+          if (Test-Path "extracted\android-13") {
+            Rename-Item -Path "extracted\android-13" -NewName "android-33"
           } else {
-            # در غیر اینصورت همه چیز را به android-33 منتقل کن
-            Move-Item -Path "extracted\*" -Destination "android-33" -Force
-          }
-
-      - name: Verify android.jar exists
-        shell: pwsh
-        run: |
-          if (Test-Path "android-33\android.jar") {
-            Write-Host "✅ android.jar found - SDK is valid."
-          } else {
-            Write-Host "❌ android.jar not found. Listing contents:"
-            Get-ChildItem -Recurse android-33 | Select-Object -First 20
+            Write-Host "❌ android-13 folder not found!"
+            Get-ChildItem "extracted"
             exit 1
           }
 
-      - name: Create final archive
+      - Name: Verify android.jar exists in android-33
         shell: pwsh
         run: |
-          Compress-Archive -Path "android-33\*" -DestinationPath "android-33-platform.zip" -Force
+          if (Test-Path "extracted\android-33\android.jar") {
+            Write-Host "✅ android.jar found - SDK is valid."
+          } else {
+            Write-Host "❌ android.jar not found. Listing contents:"
+            Get-ChildItem -Recurse "extracted" | Select-Object -First 20
+            exit 1
+          }
+
+      - name: Create final archive (android-33-platform.zip)
+        shell: pwsh
+        run: |
+          Compress-Archive -Path "extracted\android-33\*" -DestinationPath "android-33-platform.zip" -Force
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
