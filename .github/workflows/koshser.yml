@@ -1,0 +1,32 @@
+name: Download Specific Gradle Dependencies
+
+on:
+  workflow_dispatch:
+
+jobs:
+  download-specific:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.41.5'
+
+      - name: Get pub packages (only for triggering project structure)
+        run: flutter pub get
+
+      # این مرحله باعث می‌شود Gradle وابستگی‌ها را resolve کند (و در caches ذخیره شوند)
+      - name: Force Gradle to download missing dependencies
+        run: |
+          cd android
+          chmod +x gradlew
+          # اجرای یک task که وابستگی‌ها را دانلود می‌کند، بدون اینکه بیلد کامل انجام شود
+          ./gradlew :app:dependencies --configuration releaseRuntimeClasspath
+        continue-on-error: true
+
+      # آپلود فقط پوشه caches که شامل فایل‌های دانلود شده است
+      - name: Upload gradle caches
+        uses: actions/upload-artifact@v4
+        with:
+          name: gradle-caches-specific
+          path: ~/.gradle/caches
