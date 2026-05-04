@@ -1,4 +1,4 @@
-name: Download Android SDK Platform 33 (Windows)
+name: Download Android SDK Platform 33 (Direct)
 
 on:
   workflow_dispatch:
@@ -15,48 +15,26 @@ jobs:
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Set up Java
-        uses: actions/setup-java@v4
-        with:
-          distribution: 'temurin'
-          java-version: '17'
-
-      - name: Set up Android SDK directory
+      - name: Download platform-33_r01.zip directly
         shell: cmd
         run: |
-          mkdir %USERPROFILE%\android-sdk\cmdline-tools
-          echo ANDROID_HOME=%USERPROFILE%\android-sdk>> %GITHUB_ENV%
-          echo %USERPROFILE%\android-sdk\cmdline-tools\latest\bin>> %GITHUB_PATH%
+          curl -o platform-33.zip https://dl.google.com/android/repository/platform-33_r01.zip
 
-      - name: Download sdkmanager
+      - name: Extract zip
         shell: cmd
         run: |
-          curl -o commandlinetools-win.zip https://dl.google.com/android/repository/commandlinetools-win-11076708_latest.zip
-          tar -xf commandlinetools-win.zip -C %USERPROFILE%\android-sdk\cmdline-tools
-          move %USERPROFILE%\android-sdk\cmdline-tools\cmdline-tools %USERPROFILE%\android-sdk\cmdline-tools\latest
-          del commandlinetools-win.zip
+          mkdir android-33
+          tar -xf platform-33.zip -C android-33
 
-      - name: Accept SDK Licenses
-        shell: cmd
-        run: |
-          echo y | %USERPROFILE%\android-sdk\cmdline-tools\latest\bin\sdkmanager.bat --licenses
-
-      - name: Download Android SDK Platform 33
-        shell: cmd
-        run: |
-          %USERPROFILE%\android-sdk\cmdline-tools\latest\bin\sdkmanager.bat "platforms;android-33"
-
-      - name: Verify download
-        shell: cmd
-        run: |
-          dir %USERPROFILE%\android-sdk\platforms\
-          if exist %USERPROFILE%\android-sdk\platforms\android-33 ( echo SUCCESS ) else ( echo FAILED & exit 1 )
-
-      - name: Prepare and push zip to repository root
+      - name: Create final zip (android-33-platform.zip)
         shell: cmd
         run: |
           if exist android-33-platform.zip del android-33-platform.zip
-          powershell Compress-Archive -Path "%USERPROFILE%\android-sdk\platforms\android-33\*" -DestinationPath "android-33-platform.zip" -Force
+          powershell Compress-Archive -Path "android-33\*" -DestinationPath "android-33-platform.zip" -Force
+
+      - name: Commit and push zip to repository root
+        shell: cmd
+        run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add android-33-platform.zip
