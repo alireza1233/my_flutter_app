@@ -1,0 +1,60 @@
+name: Download Android SDK Platform 33
+
+on:
+  workflow_dispatch:  # فقط با دکمه Run workflow اجرا میشه
+
+jobs:
+  download:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Java (required for sdkmanager)
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Create Android SDK directory
+        shell: cmd
+        run: |
+          mkdir %USERPROFILE%\android-sdk\cmdline-tools
+          echo ANDROID_HOME=%USERPROFILE%\android-sdk>> %GITHUB_ENV%
+
+      - name: Download and install sdkmanager
+        shell: cmd
+        run: |
+          curl -o commandlinetools.zip https://dl.google.com/android/repository/commandlinetools-win-11076708_latest.zip
+          tar -xf commandlinetools.zip -C %USERPROFILE%\android-sdk\cmdline-tools
+          move %USERPROFILE%\android-sdk\cmdline-tools\cmdline-tools %USERPROFILE%\android-sdk\cmdline-tools\latest
+          del commandlinetools.zip
+
+      - name: Accept Android SDK licenses
+        shell: cmd
+        run: |
+          echo y | %USERPROFILE%\android-sdk\cmdline-tools\latest\bin\sdkmanager.bat --licenses
+
+      - name: Download platform;android-33
+        shell: cmd
+        run: |
+          %USERPROFILE%\android-sdk\cmdline-tools\latest\bin\sdkmanager.bat "platforms;android-33"
+
+      - name: Verify download
+        shell: cmd
+        run: |
+          dir %USERPROFILE%\android-sdk\platforms\android-33
+          echo "✅ android-33 downloaded successfully"
+
+      - name: Create zip archive of android-33
+        shell: pwsh
+        run: |
+          Compress-Archive -Path "$env:USERPROFILE\android-sdk\platforms\android-33\*" -DestinationPath "android-33-platform.zip" -Force
+
+      - name: Upload artifact (downloadable from GitHub)
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-33-platform
+          path: android-33-platform.zip
+          compression-level: 0   # بدون فشرده‌سازی بیشتر (قبلاً زیپ شده)
