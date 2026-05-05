@@ -35,56 +35,37 @@ jobs:
       - name: Collect entire environment into one folder
         run: |
           mkdir -p full-env
-          
-          # 1. Flutter SDK (entire folder)
           cp -r $FLUTTER_ROOT full-env/flutter-sdk
-          
-          # 2. Android SDK (platforms, build-tools, ndk, platform-tools, cmdline-tools)
           cp -r $ANDROID_HOME full-env/android-sdk
-          
-          # 3. Java JDK (the one used by runner)
           cp -r $JAVA_HOME full-env/jdk
-          
-          # 4. Gradle caches (all dependencies)
           mkdir -p full-env/gradle-caches
           cp -r ~/.gradle/caches full-env/gradle-caches/
-          
-          # 5. Gradle wrapper (local installation, just in case)
           cp -r ~/.gradle/wrapper full-env/gradle-wrapper
-          
-          # 6. Pub cache
           cp -r ~/.pub-cache full-env/pub-cache
-          
-          # 7. Android config and cache (like .android folder)
           if [ -d ~/.android ]; then
             cp -r ~/.android full-env/android-config
           fi
-          
-          # 8. Environment info file (for reference)
           env > full-env/env-info.txt
-          
           echo "All environment collected in ./full-env"
 
       - name: Compress full environment
-        run: tar -czvf full-build-env.tar.gz -C ./full-env .
+        run: tar -czf full-build-env.tar.gz -C ./full-env .
 
-      - name: Upload to Release
-        uses: svenstaro/upload-release-action@v2
-        with:
-          repo_token: ${{ secrets.GITHUB_TOKEN }}
-          file: ./full-build-env.tar.gz
-          asset_name: full-build-env.tar.gz
-          tag: env-${{ github.run_number }}
-          overwrite: true
-          prerelease: false
-          release_name: "Full Build Environment ${{ github.run_number }}"
-          body: |
-            Contains:
-            - Flutter SDK 3.24.3
-            - Android SDK (platforms 34,35,36,37 + build-tools)
-            - Android NDK (27,28,29)
-            - Java JDK 17 (Temurin)
-            - Gradle caches (full)
-            - Gradle wrapper
-            - Pub cache
-            - Android config
+      - name: Split archive into 1.8GB parts
+        run: split -b 1800M -d -a 3 full-build-env.tar.gz full-build-env.part.
+
+      - name: Create GitHub Release
+        run: |
+          TAG="env-${{ github.run_number }}"
+          gh release create "$TAG" --title "Full Build Environment ${{ github.run_number }}" --notes "Split parts due to size limit" || true
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload split parts to Release
+        run: |
+          for part in full-build-env.part.*; do
+            echo "Uploading $part ..."
+            gh release upload "env-${{ github.run_number }}" "$part" --clobber
+          done
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
