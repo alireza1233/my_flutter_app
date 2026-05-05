@@ -65,11 +65,14 @@ jobs:
           
           echo "All environment collected in ./full-env"
 
-      - name: Split, compress and upload to Release
+      - name: Compress full environment
+        run: tar -czvf full-build-env.tar.gz -C ./full-env .
+
+      - name: Upload to Release
         uses: svenstaro/upload-release-action@v2
         with:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
-          file: ./full-env
+          file: ./full-build-env.tar.gz
           asset_name: full-build-env.tar.gz
           tag: env-${{ github.run_number }}
           overwrite: true
@@ -85,4 +88,3 @@ jobs:
             - Gradle wrapper
             - Pub cache
             - Android config
-          file_size_limit: 2000  # MB (2GB limit per asset)
