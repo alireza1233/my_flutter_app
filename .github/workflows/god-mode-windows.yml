@@ -1,19 +1,19 @@
-name: GOD MODE windows (Flutter + Android + Gradle + JDK) - Windows Full Offline Package
+name: GOD MODE ULTIMATE - Full Flutter/Android Offline Package for Windows
 
 on:
   workflow_dispatch:
 
 jobs:
-  build-and-package:
+  build-ultimate-offline-bundle:
     runs-on: windows-latest
     permissions:
       contents: write
 
     steps:
-      - name: Checkout your Flutter project (if exists)
+      - name: Checkout your Flutter project (necessary for project-specific deps)
         uses: actions/checkout@v4
 
-      - name: Setup Flutter (Windows)
+      - name: Setup Flutter (Windows) – latest stable 3.24.3
         uses: subosito/flutter-action@v2
         with:
           flutter-version: '3.24.3'
@@ -26,102 +26,133 @@ jobs:
           distribution: 'temurin'
           java-version: '17'
 
-      - name: Accept Android licenses and install Android SDK components
+      - name: Force accept Android SDK licenses (working method on Windows)
+        shell: cmd
+        run: |
+          set ANDROID_HOME=%LOCALAPPDATA%\Android\Sdk
+          if not exist "%ANDROID_HOME%\cmdline-tools\latest\bin\sdkmanager.bat" (
+            echo "sdkmanager not found, will rely on flutter doctor to create it"
+            flutter doctor --android-licenses
+          )
+          :: Accept licenses using echo y pipe
+          echo y | "%ANDROID_HOME%\cmdline-tools\latest\bin\sdkmanager.bat" --licenses > nul 2>&1
+          exit /b 0
+
+      - name: Install all necessary Android SDK components (platforms, build-tools, NDK, extras)
         shell: pwsh
         run: |
-          flutter doctor --android-licenses --quiet | Out-Null
-          # Force install platform-tools, build-tools, NDK, etc.
-          flutter doctor
-          # Wait a moment for SDK manager to finish
-          Start-Sleep -Seconds 10
-          # Install NDK (if needed) and latest build-tools (optional but safe)
-          $sdkmanager = "$env:ANDROID_HOME\cmdline-tools\latest\bin\sdkmanager.bat"
-          & $sdkmanager --install "ndk-bundle" "build-tools;34.0.0" "platforms;android-34" | Out-Null
+          $sdkmanager = "$env:LOCALAPPDATA\Android\Sdk\cmdline-tools\latest\bin\sdkmanager.bat"
+          if (Test-Path $sdkmanager) {
+            & $sdkmanager --install "platforms;android-34" `
+                          "build-tools;34.0.0" `
+                          "platform-tools" `
+                          "ndk;26.1.10909125" `
+                          "extras;google;m2repository" `
+                          "extras;android;m2repository" `
+                          --verbose
+          } else {
+            Write-Host "sdkmanager not found – will be installed by flutter doctor"
+            flutter doctor --android-licenses
+          }
 
-      - name: Install project dependencies (offline-friendly)
+      - name: Download all project dependencies (pub + gradle) in offline-ready mode
         shell: pwsh
         run: |
           flutter pub get
-          flutter build apk --debug | Out-Null   # forces gradle to download dependencies
+          # Build both debug and release to cache all possible gradle dependencies
+          flutter build apk --debug
+          flutter build apk --release
           Set-Location android
           .\gradlew dependencies --no-daemon
+          .\gradlew assembleRelease --no-daemon
           Set-Location ..
 
-      - name: Collect everything into one folder (Windows paths)
+      - name: Collect COMPLETE environment into one folder – NOTHING MISSING
         shell: pwsh
         run: |
-          New-Item -ItemType Directory -Force -Path "full-env-windows" | Out-Null
+          $target = "full-env-windows-ultimate"
+          New-Item -ItemType Directory -Force -Path $target | Out-Null
 
-          # 1. Flutter SDK (already cached by action)
-          Copy-Item -Path "$env:FLUTTER_ROOT" -Destination "full-env-windows\flutter-sdk" -Recurse
+          # 1. Flutter SDK (full)
+          Copy-Item -Path "$env:FLUTTER_ROOT" -Destination "$target\flutter-sdk" -Recurse -Force
 
-          # 2. Android SDK (including NDK, platform-tools, emulator, etc.)
-          Copy-Item -Path "$env:ANDROID_HOME" -Destination "full-env-windows\android-sdk" -Recurse
-
-          # 3. Java JDK (Temurin 17)
-          Copy-Item -Path "$env:JAVA_HOME" -Destination "full-env-windows\jdk" -Recurse
-
-          # 4. Gradle caches (user's .gradle)
-          if (Test-Path "$env:USERPROFILE\.gradle\caches") {
-            New-Item -ItemType Directory -Force -Path "full-env-windows\gradle-caches" | Out-Null
-            Copy-Item -Path "$env:USERPROFILE\.gradle\caches" -Destination "full-env-windows\gradle-caches\caches" -Recurse
-          }
-          if (Test-Path "$env:USERPROFILE\.gradle\wrapper") {
-            New-Item -ItemType Directory -Force -Path "full-env-windows\gradle-wrapper" | Out-Null
-            Copy-Item -Path "$env:USERPROFILE\.gradle\wrapper" -Destination "full-env-windows\gradle-wrapper\wrapper" -Recurse
+          # 2. Android SDK (every component including NDK, build-tools, platform-tools, cmdline-tools, extras)
+          $androidSdk = if ($env:ANDROID_HOME) { $env:ANDROID_HOME } else { "$env:LOCALAPPDATA\Android\Sdk" }
+          if (Test-Path $androidSdk) {
+            Copy-Item -Path $androidSdk -Destination "$target\android-sdk" -Recurse -Force
+          } else {
+            Write-Error "Android SDK not found"
           }
 
-          # 5. Pub Cache (Dart packages)
+          # 3. JDK 17 (full Temurin distribution)
+          Copy-Item -Path "$env:JAVA_HOME" -Destination "$target\jdk" -Recurse -Force
+
+          # 4. Gradle user caches (all downloaded dependencies)
+          $gradleCaches = "$env:USERPROFILE\.gradle\caches"
+          if (Test-Path $gradleCaches) {
+            New-Item -ItemType Directory -Force -Path "$target\gradle-caches" | Out-Null
+            Copy-Item -Path $gradleCaches -Destination "$target\gradle-caches\caches" -Recurse -Force
+          }
+
+          # 5. Gradle wrapper (global)
+          $gradleWrapper = "$env:USERPROFILE\.gradle\wrapper"
+          if (Test-Path $gradleWrapper) {
+            New-Item -ItemType Directory -Force -Path "$target\gradle-wrapper" | Out-Null
+            Copy-Item -Path $gradleWrapper -Destination "$target\gradle-wrapper\wrapper" -Recurse -Force
+          }
+
+          # 6. Pub Cache (Dart packages)
           $pubCache = if ($env:PUB_CACHE) { $env:PUB_CACHE } else { "$env:LOCALAPPDATA\Pub\Cache" }
           if (Test-Path $pubCache) {
-            Copy-Item -Path $pubCache -Destination "full-env-windows\pub-cache" -Recurse
+            Copy-Item -Path $pubCache -Destination "$target\pub-cache" -Recurse -Force
           }
 
-          # 6. Android config (licenses, debug keystore, etc.)
-          if (Test-Path "$env:USERPROFILE\.android") {
-            Copy-Item -Path "$env:USERPROFILE\.android" -Destination "full-env-windows\android-config" -Recurse
+          # 7. Android user configuration (licenses, debug.keystore, adb keys, cache)
+          $androidConfig = "$env:USERPROFILE\.android"
+          if (Test-Path $androidConfig) {
+            Copy-Item -Path $androidConfig -Destination "$target\android-config" -Recurse -Force
           }
 
-          # 7. Save environment variables info
-          Get-ChildItem env: | Out-File -FilePath "full-env-windows\env-info.txt"
+          # 8. Visual Studio Build Tools 2022 (if you ever need windows desktop build)
+          #    This is NOT included by default (too large). But we at least save the info.
+          #    For pure Android builds, this is not required.
 
-          Write-Host "✅ All environment collected in .\full-env-windows"
+          # 9. Environment variables dump (for reference)
+          Get-ChildItem env: | Out-File -FilePath "$target\env-info.txt"
 
-      - name: Compress entire folder with 7zip (better than tar on Windows)
+          # 10. A helper script to set up environment offline (add to root)
+          @"
+          @echo off
+          echo Setting up Flutter offline environment...
+          set ANDROID_HOME=%~dp0android-sdk
+          set JAVA_HOME=%~dp0jdk
+          set FLUTTER_ROOT=%~dp0flutter-sdk
+          set PATH=%%FLUTTER_ROOT%%\bin;%%JAVA_HOME%%\bin;%%ANDROID_HOME%%\platform-tools;%%ANDROID_HOME%%\tools;%%PATH%%
+          echo Done. You can now run flutter commands.
+          "@ | Out-File -FilePath "$target\setup_offline.bat" -Encoding ascii
+
+          Write-Host "✅ Ultimate complete environment collected in .\$target"
+
+      - name: Compress ultimate bundle
         shell: pwsh
         run: |
-          # Use built-in Compress-Archive or 7zip – Compress-Archive is slower but works
-          Compress-Archive -Path .\full-env-windows\* -DestinationPath .\full-build-env-windows.zip -CompressionLevel Optimal
-          # If you want to split into 1.8GB parts, uncomment below:
-          # $bytes = 1800MB
-          # $i = 0
-          # $inputFile = "full-build-env-windows.zip"
-          # $stream = [System.IO.File]::OpenRead($inputFile)
-          # while ($stream.Position -lt $stream.Length) {
-          #   $remaining = $stream.Length - $stream.Position
-          #   $size = [Math]::Min($bytes, $remaining)
-          #   $buffer = New-Object byte[] $size
-          #   $stream.Read($buffer, 0, $size) | Out-Null
-          #   $partFile = "full-build-env.part.{0:D3}" -f $i
-          #   [System.IO.File]::WriteAllBytes($partFile, $buffer)
-          #   $i++
-          # }
-          # $stream.Close()
+          Compress-Archive -Path .\full-env-windows-ultimate\* -DestinationPath .\full-build-env-windows-ultimate.zip -CompressionLevel Optimal
+          Write-Host "Compressed size: $((Get-Item .\full-build-env-windows-ultimate.zip).Length / 1GB) GB"
 
-      - name: Upload as single artifact (or release)
+      - name: Upload ultimate artifact
         uses: actions/upload-artifact@v4
         with:
-          name: full-build-env-windows
-          path: .\full-build-env-windows.zip
+          name: full-build-env-windows-ultimate
+          path: .\full-build-env-windows-ultimate.zip
           if-no-files-found: error
           retention-days: 7
 
-      - name: Optionally create GitHub Release and upload split parts (if size > 2GB)
+      - name: Create GitHub Release and upload ultimate bundle
         if: always()
         run: |
-          $tag = "env-windows-${{ github.run_number }}"
-          gh release create $tag --title "Full Build Environment Windows ${{ github.run_number }}" --notes "Complete offline environment for Flutter/Android on Windows" || true
-          gh release upload $tag .\full-build-env-windows.zip --clobber
+          $tag = "ultimate-env-windows-${{ github.run_number }}"
+          gh release create $tag --title "ULTIMATE Flutter/Android Windows Offline Environment ${{ github.run_number }}" --notes "Complete offline package including: Flutter SDK, Android SDK (platforms;34, build-tools 34, NDK 26.1, platform-tools), JDK 17, Gradle caches, Pub cache, Android licenses and config. Everything needed to build any Flutter Android app offline." || true
+          gh release upload $tag .\full-build-env-windows-ultimate.zip --clobber
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         shell: pwsh
