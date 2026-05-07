@@ -1,6 +1,7 @@
 name: 🔥 ULTIMATE OFFLINE BUNDLE (Android + Windows) - Split for GitHub Releases
 
-on: workflow_dispatch
+on:
+  workflow_dispatch:
 
 jobs:
   build-complete-offline:
@@ -34,7 +35,7 @@ jobs:
             21
           java-package: jdk
 
-      # ======================== ۳- نصب کامل اندروید SDK ========================
+      # ======================== ۳- نصب کامل اندروید SDK (همان کد قبلی) ========================
       - name: Install full Android SDK (all platforms, build-tools, NDKs, emulator, extras)
         shell: pwsh
         run: |
@@ -83,7 +84,7 @@ jobs:
           }
           & $sdkmanager --list
 
-      # ======================== ۴- نصب ویژوال استودیو ========================
+      # ======================== ۴- نصب ویژوال استودیو (همان کد قبلی) ========================
       - name: Install Visual Studio Build Tools 2022 + Windows SDK (full)
         shell: pwsh
         run: |
@@ -95,7 +96,7 @@ jobs:
           $sdkLatest = Get-ChildItem "C:\Program Files (x86)\Windows Kits\10\bin\10.0.*" -Directory | Sort-Object Name -Descending | Select-Object -First 1
           $env:PATH = "$($msvcLatest.FullName)\bin\Hostx64\x64;$($sdkLatest.FullName)\x64;$env:PATH"
 
-      # ======================== ۵- کش تمام توزیع‌های گریدل ========================
+      # ======================== ۵- کش تمام توزیع‌های گریدل (همان کد قبلی) ========================
       - name: Pre-cache ALL Gradle distributions and common plugins
         shell: pwsh
         run: |
@@ -114,7 +115,7 @@ jobs:
           }
           New-Item -ItemType Directory -Path "gradle-cache-builder" -Force | Out-Null
           Set-Location "gradle-cache-builder"
-          $gradleBuildScript = @"
+          @'
           buildscript {
               repositories { mavenCentral() google() }
               dependencies {
@@ -126,13 +127,12 @@ jobs:
               }
           }
           allprojects { repositories { mavenCentral() google() } }
-          "@
-          $gradleBuildScript | Out-File -FilePath "build.gradle" -Encoding ascii
+          '@ | Out-File -FilePath "build.gradle" -Encoding ascii
           New-Item -ItemType Directory -Path "app" -Force | Out-Null
           .\gradlew --no-daemon dependencies > $null 2>&1
           Set-Location ..
 
-      # ======================== ۶- کش پکیج‌های پاب ========================
+      # ======================== ۶- کش پکیج‌های پاب (اختیاری ولی مفید) ========================
       - name: Build extra Pub Cache (many packages)
         shell: pwsh
         run: |
@@ -161,26 +161,25 @@ jobs:
           )
           $deps = ""
           foreach ($pkg in $packages) { $deps += "  $pkg: any`n" }
-          $pubspecContent = @"
+          @"
           name: cache_builder
           environment:
             sdk: '>=3.0.0 <4.0.0'
           dependencies:
             flutter:
               sdk: flutter
-          $deps
+        $deps
           dev_dependencies:
             flutter_test:
               sdk: flutter
             flutter_lints: ^3.0.0
           flutter:
             uses-material-design: true
-          "@
-          $pubspecContent | Out-File -FilePath pubspec.yaml -Encoding utf8
+          "@ | Out-File -FilePath pubspec.yaml -Encoding utf8
           flutter pub get --verbose
           Set-Location ..
 
-      # ======================== ۷- بیلد گرفتن از پروژه واقعی تو ========================
+      # ======================== ۷- بیلد گرفتن از پروژه واقعی تو (مهم!) ========================
       - name: Build YOUR messenger app to cache all project-specific dependencies
         shell: pwsh
         run: |
@@ -240,22 +239,22 @@ jobs:
           "@
           $setupBat | Out-File -FilePath "$target\setup.bat" -Encoding ascii
 
-          $setupPs1 = @"
-          `$env:ANDROID_HOME = "`$PSScriptRoot\android-sdk"
-          `$env:ANDROID_SDK_ROOT = `$env:ANDROID_HOME
-          `$env:GRADLE_USER_HOME = "`$PSScriptRoot\.gradle"
-          `$env:PUB_CACHE = "`$PSScriptRoot\pub-cache"
-          `$env:FLUTTER_ROOT = "`$PSScriptRoot\flutter"
-          `$jdkPath = Get-ChildItem "`$PSScriptRoot\jdks\17*" -Directory | Select-Object -First 1
-          `$env:JAVA_HOME = `$jdkPath.FullName
-          `$env:PATH = "`$env:FLUTTER_ROOT\bin;`$env:JAVA_HOME\bin;`$env:ANDROID_HOME\platform-tools;`$env:ANDROID_HOME\cmdline-tools\latest\bin;`$env:PATH"
+          $setupPs1 = @'
+          $env:ANDROID_HOME = "$PSScriptRoot\android-sdk"
+          $env:ANDROID_SDK_ROOT = $env:ANDROID_HOME
+          $env:GRADLE_USER_HOME = "$PSScriptRoot\.gradle"
+          $env:PUB_CACHE = "$PSScriptRoot\pub-cache"
+          $env:FLUTTER_ROOT = "$PSScriptRoot\flutter"
+          $jdkPath = Get-ChildItem "$PSScriptRoot\jdks\17*" -Directory | Select-Object -First 1
+          $env:JAVA_HOME = $jdkPath.FullName
+          $env:PATH = "$env:FLUTTER_ROOT\bin;$env:JAVA_HOME\bin;$env:ANDROID_HOME\platform-tools;$env:ANDROID_HOME\cmdline-tools\latest\bin;$env:PATH"
           Write-Host "Ready."
-          "@
+          '@
           $setupPs1 | Out-File -FilePath "$target\setup.ps1" -Encoding ascii
 
           Write-Host "All files collected in $target"
 
-      # ======================== ۹- فشرده‌سازی با 7z ========================
+      # ======================== ۹- فشرده‌سازی با 7z (بدون اسپلیت) ========================
       - name: Install 7-Zip
         shell: pwsh
         run: |
@@ -307,9 +306,8 @@ jobs:
         shell: pwsh
 
       - name: Upload combine+extract helper script
-        shell: pwsh
         run: |
-          $scriptContent = @"
+          @'
           @echo off
           echo Combining split parts into one 7z archive...
           copy /b flutter-offline.7z.part* flutter-offline-combined.7z
@@ -319,8 +317,8 @@ jobs:
           echo.
           echo Done! Run setup.bat to configure environment.
           pause
-          "@
-          $scriptContent | Out-File -FilePath "combine_and_extract.bat" -Encoding ascii
+          '@ | Out-File -FilePath "combine_and_extract.bat" -Encoding ascii
           gh release upload $env:RELEASE_TAG "combine_and_extract.bat" --clobber
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: pwsh
