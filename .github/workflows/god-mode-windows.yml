@@ -308,6 +308,7 @@ jobs:
         shell: pwsh
 
       - name: Upload combine+extract helper script
+        shell: pwsh
         run: |
           $scriptContent = @'
           @echo off
@@ -324,4 +325,3 @@ jobs:
           gh release upload $env:RELEASE_TAG "combine_and_extract.bat" --clobber
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        shell: pwsh
