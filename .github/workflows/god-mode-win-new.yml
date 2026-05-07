@@ -109,7 +109,7 @@ jobs:
           }
           & $sdkmanager --list
 
-      # ======================== ۴- نصب ویژوال استودیو (اصلاح شده: بدون windows-sdk-10 اضافی) ========================
+      # ======================== ۴- نصب ویژوال استودیو (بدون windows-sdk-10 اضافی) ========================
       - name: Install Visual Studio Build Tools 2022 + Windows SDK (full)
         shell: pwsh
         run: |
@@ -140,7 +140,7 @@ jobs:
             Write-Warning "MSVC or Windows SDK not found, but continuing"
           }
 
-      # ======================== ۵- کش تمام توزیع‌های گریدل ========================
+      # ======================== ۵- کش تمام توزیع‌های گریدل (اصلاح شده: اضافه کردن gradlew از پروژه اصلی) ========================
       - name: Pre-cache ALL Gradle distributions and common plugins
         shell: pwsh
         run: |
@@ -159,6 +159,12 @@ jobs:
           }
           New-Item -ItemType Directory -Path "gradle-cache-builder" -Force | Out-Null
           Set-Location "gradle-cache-builder"
+          
+          # کپی کردن gradlew از پروژه اصلی تا wrapper در دسترس باشد
+          Copy-Item -Path "../my_app/gradlew" -Destination "." -Force -ErrorAction SilentlyContinue
+          Copy-Item -Path "../my_app/gradlew.bat" -Destination "." -Force -ErrorAction SilentlyContinue
+          Copy-Item -Path "../my_app/gradle" -Destination "." -Recurse -Force -ErrorAction SilentlyContinue
+          
           $gradleBuildScript = @"
           buildscript {
               repositories { mavenCentral() google() }
@@ -174,7 +180,13 @@ jobs:
           "@
           $gradleBuildScript | Out-File -FilePath "build.gradle" -Encoding ascii
           New-Item -ItemType Directory -Path "app" -Force | Out-Null
-          .\gradlew --no-daemon dependencies > $null 2>&1
+          
+          # اگر gradlew وجود دارد اجرا کن، در غیر این صورت پیام بده و ادامه بده
+          if (Test-Path ".\gradlew.bat") {
+            .\gradlew --no-daemon dependencies > $null 2>&1
+          } else {
+            Write-Warning "gradlew not found, skipping dependency resolution"
+          }
           Set-Location ..
 
       # ======================== ۶- کش پکیج‌های پاب ========================
