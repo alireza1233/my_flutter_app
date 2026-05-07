@@ -34,7 +34,7 @@ jobs:
             21
           java-package: jdk
 
-      # ======================== ۳- نصب کامل اندروید SDK (نسخه نهایی مقاوم) ========================
+      # ======================== ۳- نصب کامل اندروید SDK ========================
       - name: Install full Android SDK (all platforms, build-tools, NDKs, emulator, extras)
         shell: pwsh
         run: |
@@ -109,18 +109,13 @@ jobs:
           }
           & $sdkmanager --list
 
-      # ======================== ۴- نصب ویژوال استودیو و ویندوز SDK (اصلاح نهایی) ========================
+      # ======================== ۴- نصب ویژوال استودیو (اصلاح شده: بدون windows-sdk-10 اضافی) ========================
       - name: Install Visual Studio Build Tools 2022 + Windows SDK (full)
         shell: pwsh
         run: |
-          # نصب Visual Studio Build Tools و workload VC
           choco install visualstudio2022buildtools -y --no-progress
           choco install visualstudio2022-workload-vctools -y --no-progress
 
-          # نصب Windows SDK 10 با استفاده از chocolatey (پکیج معتبر)
-          choco install windows-sdk-10 -y --no-progress
-
-          # جستجوی مسیر MSVC (ممکن است در Program Files یا Program Files (x86))
           $vsPaths = @(
             "${env:ProgramFiles(x86)}\Microsoft Visual Studio\2022\BuildTools",
             "C:\Program Files\Microsoft Visual Studio\2022\BuildTools"
@@ -134,7 +129,6 @@ jobs:
             }
           }
 
-          # جستجوی Windows SDK bin
           $sdkBinPath = "C:\Program Files (x86)\Windows Kits\10\bin"
           $sdkLatest = Get-ChildItem "$sdkBinPath\10.0.*" -Directory -ErrorAction SilentlyContinue | Sort-Object Name -Descending | Select-Object -First 1
 
