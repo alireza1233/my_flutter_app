@@ -109,19 +109,18 @@ jobs:
           }
           & $sdkmanager --list
 
-      # ======================== ۴- نصب ویژوال استودیو و ویندوز SDK (نسخه اصلاح شده) ========================
+      # ======================== ۴- نصب ویژوال استودیو و ویندوز SDK (اصلاح نهایی) ========================
       - name: Install Visual Studio Build Tools 2022 + Windows SDK (full)
         shell: pwsh
         run: |
+          # نصب Visual Studio Build Tools و workload VC
           choco install visualstudio2022buildtools -y --no-progress
           choco install visualstudio2022-workload-vctools -y --no-progress
-          
-          $sdkUrl = "https://go.microsoft.com/fwlink/p/?linkid=2232602"
-          $sdkInstaller = "$env:TEMP\winsdk.exe"
-          curl -L -o $sdkInstaller $sdkUrl
-          Start-Process -Wait -FilePath $sdkInstaller -ArgumentList "/quiet /norestart /ceip off /layout $env:TEMP\sdk_layout"
-          Start-Process -Wait -FilePath "$env:TEMP\sdk_layout\setup.exe" -ArgumentList "/quiet /norestart /ceip off /features OptionId.WindowsDesktopSdk"
 
+          # نصب Windows SDK 10 با استفاده از chocolatey (پکیج معتبر)
+          choco install windows-sdk-10 -y --no-progress
+
+          # جستجوی مسیر MSVC (ممکن است در Program Files یا Program Files (x86))
           $vsPaths = @(
             "${env:ProgramFiles(x86)}\Microsoft Visual Studio\2022\BuildTools",
             "C:\Program Files\Microsoft Visual Studio\2022\BuildTools"
@@ -134,10 +133,11 @@ jobs:
               if ($msvcLatest) { break }
             }
           }
-          
+
+          # جستجوی Windows SDK bin
           $sdkBinPath = "C:\Program Files (x86)\Windows Kits\10\bin"
           $sdkLatest = Get-ChildItem "$sdkBinPath\10.0.*" -Directory -ErrorAction SilentlyContinue | Sort-Object Name -Descending | Select-Object -First 1
-          
+
           if ($msvcLatest -and $sdkLatest) {
             $env:PATH = "$($msvcLatest.FullName)\bin\Hostx64\x64;$($sdkLatest.FullName)\x64;$env:PATH"
             Write-Host "MSVC found at: $($msvcLatest.FullName)"
