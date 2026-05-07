@@ -9,18 +9,11 @@ jobs:
       contents: write
 
     steps:
-      # ======================== ۰- کلون کردن ریپازیتوری اصلی (برای ذخیره لاگ‌ها) ========================
-      - name: Checkout main repository (for logs)
-        uses: actions/checkout@v4
-        with:
-          path: main_repo
-
-      # ======================== ۱- کلون کردن پروژه واقعی تو ========================
       - name: Checkout YOUR messenger app (public repo)
         uses: actions/checkout@v4
         with:
           repository: alireza1233/my_flutter_app
-          path: main_repo/my_app
+          path: my_app
 
       - name: Setup Flutter stable 3.24.3
         uses: subosito/flutter-action@v2
@@ -39,29 +32,9 @@ jobs:
             21
           java-package: jdk
 
-      - name: Prepare log directory (clean old logs)
-        shell: pwsh
-        run: |
-          cd main_repo
-          $logDir = "workflow-logs"
-          if (Test-Path $logDir) {
-            Remove-Item -Path $logDir -Recurse -Force
-            Write-Host "Removed old logs"
-          }
-          New-Item -ItemType Directory -Force -Path $logDir | Out-Null
-          Write-Host "Created fresh log directory: $logDir"
-
       - name: Install full Android SDK
         shell: pwsh
         run: |
-          cd main_repo
-          $logFile = "workflow-logs/01-android-sdk.log"
-          function Write-Log {
-            param([string]$Message)
-            Add-Content -Path $logFile -Value $Message
-            Write-Host $Message
-          }
-          Write-Log "=== Starting Android SDK installation ==="
           $androidHome = "$env:LOCALAPPDATA\Android\Sdk"
           $env:ANDROID_HOME = $androidHome
           $env:ANDROID_SDK_ROOT = $androidHome
@@ -72,7 +45,7 @@ jobs:
           $sdkmanagerPath = "$latestDir\bin\sdkmanager.bat"
 
           if (!(Test-Path $sdkmanagerPath)) {
-            Write-Log "Downloading command line tools..."
+            Write-Host "Downloading command line tools..."
             $zipFile = "sdk-tools.zip"
             curl -o $zipFile https://dl.google.com/android/repository/commandlinetools-win-11076708_latest.zip
             $tempExtract = Join-Path $env:TEMP "cmdline-tools-extract"
@@ -81,7 +54,7 @@ jobs:
 
             $sdkmanagerFile = Get-ChildItem -Path $tempExtract -Recurse -Filter "sdkmanager.bat" | Select-Object -First 1
             if (-not $sdkmanagerFile) {
-              Write-Log "ERROR: sdkmanager.bat not found in extracted files!"
+              Write-Error "sdkmanager.bat not found in extracted files!"
               exit 1
             }
 
@@ -96,10 +69,10 @@ jobs:
           if (Test-Path "$latestDir\bin\sdkmanager.bat") {
             $sdkmanager = "$latestDir\bin\sdkmanager.bat"
           } else {
-            Write-Log "ERROR: sdkmanager.bat not found after extraction!"
+            Write-Error "sdkmanager.bat not found after extraction!"
             exit 1
           }
-          Write-Log "Using sdkmanager: $sdkmanager"
+          Write-Host "Using sdkmanager: $sdkmanager"
 
           for ($i=0; $i -lt 10; $i++) { echo y | & $sdkmanager --licenses 2>&1 > $null }
 
@@ -128,25 +101,16 @@ jobs:
           $batchSize = 20
           for ($i=0; $i -lt $allPackages.Count; $i += $batchSize) {
             $batch = $allPackages[$i..($i+$batchSize-1)] -join " "
-            Write-Log "Installing batch $i : $batch"
-            & $sdkmanager $batch --verbose 2>&1 | ForEach-Object { Write-Log $_ }
+            Write-Host "Installing batch $i : $batch"
+            & $sdkmanager $batch --verbose
           }
-          & $sdkmanager --list 2>&1 | ForEach-Object { Write-Log $_ }
-          Write-Log "=== Android SDK installation completed ==="
+          & $sdkmanager --list
 
       - name: Install Visual Studio Build Tools 2022 + Windows SDK
         shell: pwsh
         run: |
-          cd main_repo
-          $logFile = "workflow-logs/02-vs-install.log"
-          function Write-Log {
-            param([string]$Message)
-            Add-Content -Path $logFile -Value $Message
-            Write-Host $Message
-          }
-          Write-Log "=== Installing Visual Studio Build Tools ==="
-          choco install visualstudio2022buildtools -y --no-progress 2>&1 | ForEach-Object { Write-Log $_ }
-          choco install visualstudio2022-workload-vctools -y --no-progress 2>&1 | ForEach-Object { Write-Log $_ }
+          choco install visualstudio2022buildtools -y --no-progress
+          choco install visualstudio2022-workload-vctools -y --no-progress
 
           $vsPaths = @(
             "${env:ProgramFiles(x86)}\Microsoft Visual Studio\2022\BuildTools",
@@ -166,24 +130,15 @@ jobs:
 
           if ($msvcLatest -and $sdkLatest) {
             $env:PATH = "$($msvcLatest.FullName)\bin\Hostx64\x64;$($sdkLatest.FullName)\x64;$env:PATH"
-            Write-Log "MSVC found at: $($msvcLatest.FullName)"
-            Write-Log "Windows SDK found at: $($sdkLatest.FullName)"
+            Write-Host "MSVC found at: $($msvcLatest.FullName)"
+            Write-Host "Windows SDK found at: $($sdkLatest.FullName)"
           } else {
-            Write-Log "WARNING: MSVC or Windows SDK not found, but continuing"
+            Write-Warning "MSVC or Windows SDK not found, but continuing"
           }
-          Write-Log "=== VS installation completed ==="
 
       - name: Pre-cache ALL Gradle distributions and common plugins
         shell: pwsh
         run: |
-          cd main_repo
-          $logFile = "workflow-logs/03-gradle-cache.log"
-          function Write-Log {
-            param([string]$Message)
-            Add-Content -Path $logFile -Value $Message
-            Write-Host $Message
-          }
-          Write-Log "=== Pre-caching Gradle distributions ==="
           $gradleUserHome = "$env:USERPROFILE\.gradle"
           mkdir -Force "$gradleUserHome\wrapper\dists" | Out-Null
           $versions = @("6.5","6.6.1","6.7.1","6.8.3","6.9.4","7.0.2","7.1.1","7.2","7.3.3","7.4.2","7.5.1","7.6.4","8.0.2","8.1.1","8.2.1","8.3","8.4","8.5","8.6","8.7")
@@ -193,11 +148,8 @@ jobs:
             mkdir -Force $dest -ErrorAction SilentlyContinue
             $zipFile = "$dest\gradle-$ver-bin.zip"
             if (!(Test-Path $zipFile)) {
-              Write-Log "Downloading Gradle $ver ..."
-              curl -L -o $zipFile $url 2>&1 | ForEach-Object { Write-Log $_ }
-              Expand-Archive -Path $zipFile -DestinationPath $dest -Force 2>&1 | ForEach-Object { Write-Log $_ }
-            } else {
-              Write-Log "Gradle $ver already cached"
+              curl -L -o $zipFile $url
+              Expand-Archive -Path $zipFile -DestinationPath $dest -Force
             }
           }
           New-Item -ItemType Directory -Path "gradle-cache-builder" -Force | Out-Null
@@ -208,7 +160,7 @@ jobs:
             Copy-Item -Path "../my_app/gradlew.bat" -Destination "." -Force
             Copy-Item -Path "../my_app/gradle" -Destination "." -Recurse -Force
           } else {
-            Write-Log "WARNING: my_app gradlew not found, creating dummy"
+            Write-Warning "my_app gradlew not found, creating dummy"
             '@echo off' | Out-File -FilePath "gradlew.bat" -Encoding ascii
             'echo dummy' | Out-File -FilePath "gradlew.bat" -Encoding ascii -Append
           }
@@ -230,11 +182,9 @@ jobs:
           New-Item -ItemType Directory -Path "app" -Force | Out-Null
 
           if (Test-Path ".\gradlew.bat") {
-            Write-Log "Running gradlew dependencies..."
             .\gradlew --no-daemon dependencies > $null 2>&1
           }
           Set-Location ..
-          Write-Log "=== Gradle pre-caching completed ==="
 
       # ======================== ۶- کش پکیج‌های پاب (غیرفعال شده به دلیل سنگینی) ========================
       # - name: Build extra Pub Cache (many packages)
@@ -245,58 +195,26 @@ jobs:
       - name: Generate code with build_runner (Riverpod & Hive)
         shell: pwsh
         run: |
-          cd main_repo
-          $logFile = "workflow-logs/04-build-runner.log"
-          function Write-Log {
-            param([string]$Message)
-            Add-Content -Path $logFile -Value $Message
-            Write-Host $Message
-          }
-          Write-Log "=== Generating code with build_runner ==="
           cd my_app
-          flutter pub get 2>&1 | ForEach-Object { Write-Log $_ }
-          flutter pub run build_runner build --delete-conflicting-outputs 2>&1 | ForEach-Object { Write-Log $_ }
-          Write-Log "=== build_runner completed ==="
-          cd ..
+          flutter pub get
+          flutter pub run build_runner build --delete-conflicting-outputs
 
       - name: Build YOUR messenger app to cache all project-specific dependencies
         shell: pwsh
         run: |
-          cd main_repo
-          $logFile = "workflow-logs/05-build-app.log"
-          function Write-Log {
-            param([string]$Message)
-            Add-Content -Path $logFile -Value $Message
-            Write-Host $Message
-          }
-          Write-Log "=== Building Flutter app ==="
           cd my_app
-          Write-Log "Building APK debug..."
-          flutter build apk --debug 2>&1 | ForEach-Object { Write-Log $_ }
-          Write-Log "Building APK release..."
-          flutter build apk --release 2>&1 | ForEach-Object { Write-Log $_ }
-          Write-Log "Building Windows debug..."
-          flutter build windows --debug 2>&1 | ForEach-Object { Write-Log $_ }
-          Write-Log "Building Windows release..."
-          flutter build windows --release 2>&1 | ForEach-Object { Write-Log $_ }
-          Write-Log "Running Gradle dependencies..."
+          flutter build apk --debug
+          flutter build apk --release
+          flutter build windows --debug
+          flutter build windows --release
           cd android
-          .\gradlew dependencies --no-daemon 2>&1 | ForEach-Object { Write-Log $_ }
-          .\gradlew assembleRelease --no-daemon 2>&1 | ForEach-Object { Write-Log $_ }
+          .\gradlew dependencies --no-daemon
+          .\gradlew assembleRelease --no-daemon
           cd ../..
-          Write-Log "=== App build completed ==="
 
       - name: Assemble ultimate offline folder
         shell: pwsh
         run: |
-          cd main_repo
-          $logFile = "workflow-logs/06-assemble-folder.log"
-          function Write-Log {
-            param([string]$Message)
-            Add-Content -Path $logFile -Value $Message
-            Write-Host $Message
-          }
-          Write-Log "=== Assembling offline folder ==="
           $target = "flutter-offline-full"
           New-Item -ItemType Directory -Force -Path $target | Out-Null
 
@@ -351,40 +269,29 @@ jobs:
           "@
           $setupPs1 | Out-File -FilePath "$target\setup.ps1" -Encoding ascii
 
-          Write-Log "All files collected in $target"
+          Write-Host "All files collected in $target"
 
       - name: Install 7-Zip
         shell: pwsh
         run: |
-          cd main_repo
           choco install 7zip -y --no-progress
           $env:PATH = "C:\Program Files\7-Zip;$env:PATH"
 
       - name: Create single 7z archive (max compression, no split)
         shell: pwsh
         run: |
-          cd main_repo
-          $logFile = "workflow-logs/07-create-7z.log"
-          function Write-Log {
-            param([string]$Message)
-            Add-Content -Path $logFile -Value $Message
-            Write-Host $Message
-          }
-          Write-Log "=== Creating 7z archive ==="
-          & "C:\Program Files\7-Zip\7z.exe" a -t7z -mx=9 -md=64m -mmt=on "flutter-offline-full.7z" ".\flutter-offline-full\" -bsp1 -bse1 2>&1 | ForEach-Object { Write-Log $_ }
-          Write-Log "Size: $([math]::Round((Get-Item 'flutter-offline-full.7z').Length / 1GB, 2)) GB"
+          & "C:\Program Files\7-Zip\7z.exe" a -t7z -mx=9 -md=64m -mmt=on "flutter-offline-full.7z" ".\flutter-offline-full\" -bsp1 -bse1
+          Write-Host "Size: $([math]::Round((Get-Item 'flutter-offline-full.7z').Length / 1GB, 2)) GB"
 
       - name: Test archive integrity
         shell: pwsh
         run: |
-          cd main_repo
           & "C:\Program Files\7-Zip\7z.exe" t "flutter-offline-full.7z"
           if ($LASTEXITCODE -ne 0) { throw "Archive is corrupted!" }
 
       - name: Split archive with split command (Git Bash)
         shell: bash
         run: |
-          cd main_repo
           echo "Splitting into 1.8GB chunks..."
           split -b 1800M -a 2 -d --verbose flutter-offline-full.7z "flutter-offline.7z.part"
           echo "Completed. Parts:"
@@ -393,7 +300,7 @@ jobs:
       - name: Create GitHub Release
         id: create_release
         run: |
-          cd main_repo
+          cd ${{ github.workspace }}
           $tag = "offline-bundle-v$((Get-Date -Format 'yyyyMMdd-HHmmss'))"
           echo "RELEASE_TAG=$tag" | Out-File -FilePath $env:GITHUB_ENV -Append
           gh release create $tag --title "Complete Flutter Offline Bundle (Split Parts)" --notes "Download all .part files, then combine and extract."
@@ -403,7 +310,7 @@ jobs:
 
       - name: Upload split parts to Release
         run: |
-          cd main_repo
+          cd ${{ github.workspace }}
           Get-ChildItem -Filter "flutter-offline.7z.part*" | ForEach-Object {
             gh release upload $env:RELEASE_TAG "$($_.FullName)" --clobber
             Write-Host "Uploaded $($_.Name) ($([math]::Round($_.Length/1MB,2)) MB)"
@@ -414,7 +321,7 @@ jobs:
 
       - name: Upload combine+extract helper script
         run: |
-          cd main_repo
+          cd ${{ github.workspace }}
           $scriptContent = @"
           @echo off
           echo Combining split parts into one 7z archive...
@@ -431,26 +338,3 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         shell: pwsh
-
-      - name: Upload workflow logs as artifact (for easy download)
-        uses: actions/upload-artifact@v4
-        with:
-          name: workflow-logs-${{ github.run_id }}
-          path: main_repo/workflow-logs/
-          retention-days: 7
-
-      - name: Commit logs to repository
-        if: always()
-        shell: pwsh
-        run: |
-          cd main_repo
-          $logDir = "workflow-logs"
-          if (Test-Path $logDir) {
-            git config user.name "github-actions[bot]"
-            git config user.email "github-actions[bot]@users.noreply.github.com"
-            git add $logDir
-            git commit -m "Add workflow logs for run ${{ github.run_id }} [skip ci]" || echo "No changes to commit"
-            git push
-          }
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
