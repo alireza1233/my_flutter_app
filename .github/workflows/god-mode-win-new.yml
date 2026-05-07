@@ -161,7 +161,6 @@ jobs:
             Copy-Item -Path "../my_app/gradle" -Destination "." -Recurse -Force
           } else {
             Write-Warning "my_app gradlew not found, creating dummy"
-            # ایجاد یک gradlew.bat ساده برای جلوگیری از خطا
             '@echo off' | Out-File -FilePath "gradlew.bat" -Encoding ascii
             'echo dummy' | Out-File -FilePath "gradlew.bat" -Encoding ascii -Append
           }
@@ -187,52 +186,53 @@ jobs:
           }
           Set-Location ..
 
-      - name: Build extra Pub Cache (many packages)
-        shell: pwsh
-        run: |
-          New-Item -ItemType Directory -Force -Path pub_cache_project | Out-Null
-          Set-Location pub_cache_project
-          $packages = @(
-            "flutter", "provider", "riverpod", "flutter_riverpod", "dio", "sqflite", "shared_preferences",
-            "firebase_core", "firebase_auth", "cloud_firestore", "firebase_storage", "firebase_messaging",
-            "firebase_analytics", "firebase_crashlytics", "firebase_dynamic_links", "google_sign_in",
-            "sign_in_with_apple", "http", "path_provider", "image_picker", "cached_network_image",
-            "url_launcher", "flutter_local_notifications", "flutter_native_splash", "flutter_launcher_icons",
-            "google_fonts", "flutter_svg", "permission_handler", "device_info_plus", "package_info_plus",
-            "connectivity_plus", "intl", "equatable", "bloc", "flutter_bloc", "get_it", "hive", "hive_flutter",
-            "lottie", "shimmer", "carousel_slider", "webview_flutter", "video_player", "audioplayers",
-            "file_picker", "easy_localization", "flutter_secure_storage", "crypto", "path", "sembast",
-            "animations", "flutter_markdown", "qr_flutter", "barcode_scan", "local_auth", "geolocator",
-            "google_maps_flutter", "flutter_polyline_points", "charts_flutter", "syncfusion_flutter_charts",
-            "fl_chart", "pdf", "printing", "excel", "open_file", "share_plus", "in_app_purchase",
-            "revenuecat", "admob_flutter", "google_mobile_ads", "flutter_facebook_auth", "appsflyer_sdk",
-            "onesignal_flutter", "sentry_flutter", "mixpanel_flutter", "amplify_flutter", "aws_common",
-            "algolia", "graphql_flutter", "apollo_client", "rive", "flare_splash", "spritewidget",
-            "flame", "bonfire", "tiled", "audioplayers", "just_audio", "assets_audio_player", "chewie",
-            "photo_view", "staggered_grid_view", "infinite_scroll_pagination", "sliver_tools", "flutter_slidable",
-            "group_button", "dropdown_search", "flutter_typeahead", "searchable_dropdown", "modal_bottom_sheet",
-            "cupertino_icons", "font_awesome_flutter", "material_design_icons_flutter", "flutter_vector_icons"
-          )
-          $deps = ""
-          foreach ($pkg in $packages) { $deps += "  $($pkg): any`n" }
-          $pubspecContent = @"
-          name: cache_builder
-          environment:
-            sdk: '>=3.0.0 <4.0.0'
-          dependencies:
-            flutter:
-              sdk: flutter
-          $deps
-          dev_dependencies:
-            flutter_test:
-              sdk: flutter
-            flutter_lints: ^3.0.0
-          flutter:
-            uses-material-design: true
-          "@
-          $pubspecContent | Out-File -FilePath pubspec.yaml -Encoding utf8
-          flutter pub get --verbose
-          Set-Location ..
+      # ======================== ۶- کش پکیج‌های پاب (غیرفعال شده به دلیل سنگینی) ========================
+      # - name: Build extra Pub Cache (many packages)
+      #   shell: pwsh
+      #   run: |
+      #     New-Item -ItemType Directory -Force -Path pub_cache_project | Out-Null
+      #     Set-Location pub_cache_project
+      #     $packages = @(
+      #       "flutter", "provider", "riverpod", "flutter_riverpod", "dio", "sqflite", "shared_preferences",
+      #       "firebase_core", "firebase_auth", "cloud_firestore", "firebase_storage", "firebase_messaging",
+      #       "firebase_analytics", "firebase_crashlytics", "firebase_dynamic_links", "google_sign_in",
+      #       "sign_in_with_apple", "http", "path_provider", "image_picker", "cached_network_image",
+      #       "url_launcher", "flutter_local_notifications", "flutter_native_splash", "flutter_launcher_icons",
+      #       "google_fonts", "flutter_svg", "permission_handler", "device_info_plus", "package_info_plus",
+      #       "connectivity_plus", "intl", "equatable", "bloc", "flutter_bloc", "get_it", "hive", "hive_flutter",
+      #       "lottie", "shimmer", "carousel_slider", "webview_flutter", "video_player", "audioplayers",
+      #       "file_picker", "easy_localization", "flutter_secure_storage", "crypto", "path", "sembast",
+      #       "animations", "flutter_markdown", "qr_flutter", "barcode_scan", "local_auth", "geolocator",
+      #       "google_maps_flutter", "flutter_polyline_points", "charts_flutter", "syncfusion_flutter_charts",
+      #       "fl_chart", "pdf", "printing", "excel", "open_file", "share_plus", "in_app_purchase",
+      #       "revenuecat", "admob_flutter", "google_mobile_ads", "flutter_facebook_auth", "appsflyer_sdk",
+      #       "onesignal_flutter", "sentry_flutter", "mixpanel_flutter", "amplify_flutter", "aws_common",
+      #       "algolia", "graphql_flutter", "apollo_client", "rive", "flare_splash", "spritewidget",
+      #       "flame", "bonfire", "tiled", "audioplayers", "just_audio", "assets_audio_player", "chewie",
+      #       "photo_view", "staggered_grid_view", "infinite_scroll_pagination", "sliver_tools", "flutter_slidable",
+      #       "group_button", "dropdown_search", "flutter_typeahead", "searchable_dropdown", "modal_bottom_sheet",
+      #       "cupertino_icons", "font_awesome_flutter", "material_design_icons_flutter", "flutter_vector_icons"
+      #     )
+      #     $deps = ""
+      #     foreach ($pkg in $packages) { $deps += "  $($pkg): any`n" }
+      #     $pubspecContent = @"
+      #     name: cache_builder
+      #     environment:
+      #       sdk: '>=3.0.0 <4.0.0'
+      #     dependencies:
+      #       flutter:
+      #         sdk: flutter
+      #     $deps
+      #     dev_dependencies:
+      #       flutter_test:
+      #         sdk: flutter
+      #       flutter_lints: ^3.0.0
+      #     flutter:
+      #       uses-material-design: true
+      #     "@
+      #     $pubspecContent | Out-File -FilePath pubspec.yaml -Encoding utf8
+      #     flutter pub get --verbose
+      #     Set-Location ..
 
       - name: Build YOUR messenger app to cache all project-specific dependencies
         shell: pwsh
