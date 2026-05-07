@@ -55,7 +55,6 @@ jobs:
             Remove-Item -Path $tempExtract -Recurse -Force -ErrorAction SilentlyContinue
             Expand-Archive -Path $zipFile -DestinationPath $tempExtract -Force
 
-            # جستجوی واقعی sdkmanager.bat
             $sdkmanagerFile = Get-ChildItem -Path $tempExtract -Recurse -Filter "sdkmanager.bat" | Select-Object -First 1
             if (-not $sdkmanagerFile) {
               Write-Error "sdkmanager.bat not found in extracted files!"
@@ -110,17 +109,42 @@ jobs:
           }
           & $sdkmanager --list
 
-      # ======================== ۴- نصب ویژوال استودیو ========================
+      # ======================== ۴- نصب ویژوال استودیو و ویندوز SDK (نسخه اصلاح شده) ========================
       - name: Install Visual Studio Build Tools 2022 + Windows SDK (full)
         shell: pwsh
         run: |
-          choco install visualstudio2022buildtools --version=17.10.5 -y --no-progress
+          choco install visualstudio2022buildtools -y --no-progress
           choco install visualstudio2022-workload-vctools -y --no-progress
-          choco install windows-sdk-11 -y --no-progress
-          choco install windows-sdk-10-version-2004 -y --no-progress
-          $msvcLatest = Get-ChildItem "C:\Program Files\Microsoft Visual Studio\2022\BuildTools\VC\Tools\MSVC" -Directory | Sort-Object Name -Descending | Select-Object -First 1
-          $sdkLatest = Get-ChildItem "C:\Program Files (x86)\Windows Kits\10\bin\10.0.*" -Directory | Sort-Object Name -Descending | Select-Object -First 1
-          $env:PATH = "$($msvcLatest.FullName)\bin\Hostx64\x64;$($sdkLatest.FullName)\x64;$env:PATH"
+          
+          $sdkUrl = "https://go.microsoft.com/fwlink/p/?linkid=2232602"
+          $sdkInstaller = "$env:TEMP\winsdk.exe"
+          curl -L -o $sdkInstaller $sdkUrl
+          Start-Process -Wait -FilePath $sdkInstaller -ArgumentList "/quiet /norestart /ceip off /layout $env:TEMP\sdk_layout"
+          Start-Process -Wait -FilePath "$env:TEMP\sdk_layout\setup.exe" -ArgumentList "/quiet /norestart /ceip off /features OptionId.WindowsDesktopSdk"
+
+          $vsPaths = @(
+            "${env:ProgramFiles(x86)}\Microsoft Visual Studio\2022\BuildTools",
+            "C:\Program Files\Microsoft Visual Studio\2022\BuildTools"
+          )
+          $msvcLatest = $null
+          foreach ($vsPath in $vsPaths) {
+            $msvcPath = Join-Path $vsPath "VC\Tools\MSVC"
+            if (Test-Path $msvcPath) {
+              $msvcLatest = Get-ChildItem $msvcPath -Directory | Sort-Object Name -Descending | Select-Object -First 1
+              if ($msvcLatest) { break }
+            }
+          }
+          
+          $sdkBinPath = "C:\Program Files (x86)\Windows Kits\10\bin"
+          $sdkLatest = Get-ChildItem "$sdkBinPath\10.0.*" -Directory -ErrorAction SilentlyContinue | Sort-Object Name -Descending | Select-Object -First 1
+          
+          if ($msvcLatest -and $sdkLatest) {
+            $env:PATH = "$($msvcLatest.FullName)\bin\Hostx64\x64;$($sdkLatest.FullName)\x64;$env:PATH"
+            Write-Host "MSVC found at: $($msvcLatest.FullName)"
+            Write-Host "Windows SDK found at: $($sdkLatest.FullName)"
+          } else {
+            Write-Warning "MSVC or Windows SDK not found, but continuing"
+          }
 
       # ======================== ۵- کش تمام توزیع‌های گریدل ========================
       - name: Pre-cache ALL Gradle distributions and common plugins
