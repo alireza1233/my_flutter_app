@@ -34,7 +34,7 @@ jobs:
             21
           java-package: jdk
 
-      # ======================== ۳- نصب کامل اندروید SDK (اصلاح شده) ========================
+      # ======================== ۳- نصب کامل اندروید SDK (نسخه نهایی مقاوم) ========================
       - name: Install full Android SDK (all platforms, build-tools, NDKs, emulator, extras)
         shell: pwsh
         run: |
@@ -43,37 +43,41 @@ jobs:
           $env:ANDROID_SDK_ROOT = $androidHome
           mkdir -Force $androidHome | Out-Null
 
-          # نصب cmdline-tools به روش مقاوم
           $toolsDir = "$androidHome\cmdline-tools"
-          mkdir -Force $toolsDir | Out-Null
-          $sdkmanagerPath = "$toolsDir\latest\bin\sdkmanager.bat"
+          $latestDir = "$toolsDir\latest"
+          $sdkmanagerPath = "$latestDir\bin\sdkmanager.bat"
+
           if (!(Test-Path $sdkmanagerPath)) {
             Write-Host "Downloading command line tools..."
-            curl -o sdk-tools.zip https://dl.google.com/android/repository/commandlinetools-win-11076708_latest.zip
-            Expand-Archive sdk-tools.zip -DestinationPath $toolsDir -Force
-            # ساختار داخل zip: cmdline-tools/bin/... یا cmdline-tools/latest/
-            if (Test-Path "$toolsDir\cmdline-tools\bin\sdkmanager.bat") {
-              Move-Item "$toolsDir\cmdline-tools\*" "$toolsDir\latest\" -Force -ErrorAction SilentlyContinue
-            } elseif (Test-Path "$toolsDir\cmdline-tools\latest\bin\sdkmanager.bat") {
-              Move-Item "$toolsDir\cmdline-tools\latest\*" "$toolsDir\latest\" -Force -ErrorAction SilentlyContinue
-            } elseif (Test-Path "$toolsDir\bin\sdkmanager.bat") {
-              New-Item -ItemType Directory -Path "$toolsDir\latest" -Force | Out-Null
-              Move-Item "$toolsDir\*" "$toolsDir\latest\" -Force -ErrorAction SilentlyContinue
+            $zipFile = "sdk-tools.zip"
+            curl -o $zipFile https://dl.google.com/android/repository/commandlinetools-win-11076708_latest.zip
+            $tempExtract = Join-Path $env:TEMP "cmdline-tools-extract"
+            Remove-Item -Path $tempExtract -Recurse -Force -ErrorAction SilentlyContinue
+            Expand-Archive -Path $zipFile -DestinationPath $tempExtract -Force
+
+            # جستجوی واقعی sdkmanager.bat
+            $sdkmanagerFile = Get-ChildItem -Path $tempExtract -Recurse -Filter "sdkmanager.bat" | Select-Object -First 1
+            if (-not $sdkmanagerFile) {
+              Write-Error "sdkmanager.bat not found in extracted files!"
+              exit 1
             }
-            Remove-Item sdk-tools.zip -Force
+
+            New-Item -ItemType Directory -Path $latestDir -Force | Out-Null
+            $sourceRoot = $sdkmanagerFile.Directory.Parent
+            Copy-Item -Path "$($sourceRoot.FullName)\*" -Destination $latestDir -Recurse -Force
+
+            Remove-Item $zipFile -Force
+            Remove-Item $tempExtract -Recurse -Force
           }
-          # نهایی کردن مسیر sdkmanager
-          if (Test-Path "$toolsDir\latest\bin\sdkmanager.bat") {
-            $sdkmanager = "$toolsDir\latest\bin\sdkmanager.bat"
-          } elseif (Test-Path "$toolsDir\bin\sdkmanager.bat") {
-            $sdkmanager = "$toolsDir\bin\sdkmanager.bat"
+
+          if (Test-Path "$latestDir\bin\sdkmanager.bat") {
+            $sdkmanager = "$latestDir\bin\sdkmanager.bat"
           } else {
             Write-Error "sdkmanager.bat not found after extraction!"
             exit 1
           }
           Write-Host "Using sdkmanager: $sdkmanager"
 
-          # قبول مجوزها
           for ($i=0; $i -lt 10; $i++) { echo y | & $sdkmanager --licenses 2>&1 > $null }
 
           $platforms = 21..35 | ForEach-Object { "platforms;android-$_" }
