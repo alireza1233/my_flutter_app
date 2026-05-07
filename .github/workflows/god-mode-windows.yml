@@ -114,7 +114,7 @@ jobs:
           }
           New-Item -ItemType Directory -Path "gradle-cache-builder" -Force | Out-Null
           Set-Location "gradle-cache-builder"
-          $gradleBuildScript = @'
+          $gradleBuildScript = @"
           buildscript {
               repositories { mavenCentral() google() }
               dependencies {
@@ -126,7 +126,7 @@ jobs:
               }
           }
           allprojects { repositories { mavenCentral() google() } }
-          '@
+          "@
           $gradleBuildScript | Out-File -FilePath "build.gradle" -Encoding ascii
           New-Item -ItemType Directory -Path "app" -Force | Out-Null
           .\gradlew --no-daemon dependencies > $null 2>&1
@@ -240,17 +240,17 @@ jobs:
           "@
           $setupBat | Out-File -FilePath "$target\setup.bat" -Encoding ascii
 
-          $setupPs1 = @'
-          $env:ANDROID_HOME = "$PSScriptRoot\android-sdk"
-          $env:ANDROID_SDK_ROOT = $env:ANDROID_HOME
-          $env:GRADLE_USER_HOME = "$PSScriptRoot\.gradle"
-          $env:PUB_CACHE = "$PSScriptRoot\pub-cache"
-          $env:FLUTTER_ROOT = "$PSScriptRoot\flutter"
-          $jdkPath = Get-ChildItem "$PSScriptRoot\jdks\17*" -Directory | Select-Object -First 1
-          $env:JAVA_HOME = $jdkPath.FullName
-          $env:PATH = "$env:FLUTTER_ROOT\bin;$env:JAVA_HOME\bin;$env:ANDROID_HOME\platform-tools;$env:ANDROID_HOME\cmdline-tools\latest\bin;$env:PATH"
+          $setupPs1 = @"
+          `$env:ANDROID_HOME = "`$PSScriptRoot\android-sdk"
+          `$env:ANDROID_SDK_ROOT = `$env:ANDROID_HOME
+          `$env:GRADLE_USER_HOME = "`$PSScriptRoot\.gradle"
+          `$env:PUB_CACHE = "`$PSScriptRoot\pub-cache"
+          `$env:FLUTTER_ROOT = "`$PSScriptRoot\flutter"
+          `$jdkPath = Get-ChildItem "`$PSScriptRoot\jdks\17*" -Directory | Select-Object -First 1
+          `$env:JAVA_HOME = `$jdkPath.FullName
+          `$env:PATH = "`$env:FLUTTER_ROOT\bin;`$env:JAVA_HOME\bin;`$env:ANDROID_HOME\platform-tools;`$env:ANDROID_HOME\cmdline-tools\latest\bin;`$env:PATH"
           Write-Host "Ready."
-          '@
+          "@
           $setupPs1 | Out-File -FilePath "$target\setup.ps1" -Encoding ascii
 
           Write-Host "All files collected in $target"
@@ -309,7 +309,7 @@ jobs:
       - name: Upload combine+extract helper script
         shell: pwsh
         run: |
-          $scriptContent = @'
+          $scriptContent = @"
           @echo off
           echo Combining split parts into one 7z archive...
           copy /b flutter-offline.7z.part* flutter-offline-combined.7z
@@ -319,7 +319,7 @@ jobs:
           echo.
           echo Done! Run setup.bat to configure environment.
           pause
-          '@
+          "@
           $scriptContent | Out-File -FilePath "combine_and_extract.bat" -Encoding ascii
           gh release upload $env:RELEASE_TAG "combine_and_extract.bat" --clobber
         env:
