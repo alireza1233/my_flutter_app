@@ -9,14 +9,12 @@ jobs:
       contents: write
 
     steps:
-      # ======================== ۱- کلون کردن پروژه واقعی تو ========================
       - name: Checkout YOUR messenger app (public repo)
         uses: actions/checkout@v4
         with:
           repository: alireza1233/my_flutter_app
           path: my_app
 
-      # ======================== ۲- راه‌اندازی فلاتر و جاوا ========================
       - name: Setup Flutter stable 3.24.3
         uses: subosito/flutter-action@v2
         with:
@@ -34,8 +32,7 @@ jobs:
             21
           java-package: jdk
 
-      # ======================== ۳- نصب کامل اندروید SDK ========================
-      - name: Install full Android SDK (all platforms, build-tools, NDKs, emulator, extras)
+      - name: Install full Android SDK
         shell: pwsh
         run: |
           $androidHome = "$env:LOCALAPPDATA\Android\Sdk"
@@ -109,8 +106,7 @@ jobs:
           }
           & $sdkmanager --list
 
-      # ======================== ۴- نصب ویژوال استودیو (بدون windows-sdk-10 اضافی) ========================
-      - name: Install Visual Studio Build Tools 2022 + Windows SDK (full)
+      - name: Install Visual Studio Build Tools 2022 + Windows SDK
         shell: pwsh
         run: |
           choco install visualstudio2022buildtools -y --no-progress
@@ -140,13 +136,12 @@ jobs:
             Write-Warning "MSVC or Windows SDK not found, but continuing"
           }
 
-      # ======================== ۵- کش تمام توزیع‌های گریدل (اصلاح شده: اضافه کردن gradlew از پروژه اصلی) ========================
       - name: Pre-cache ALL Gradle distributions and common plugins
         shell: pwsh
         run: |
           $gradleUserHome = "$env:USERPROFILE\.gradle"
           mkdir -Force "$gradleUserHome\wrapper\dists" | Out-Null
-          $versions = @("6.5", "6.6.1", "6.7.1", "6.8.3", "6.9.4", "7.0.2", "7.1.1", "7.2", "7.3.3", "7.4.2", "7.5.1", "7.6.4", "8.0.2", "8.1.1", "8.2.1", "8.3", "8.4", "8.5", "8.6", "8.7")
+          $versions = @("6.5","6.6.1","6.7.1","6.8.3","6.9.4","7.0.2","7.1.1","7.2","7.3.3","7.4.2","7.5.1","7.6.4","8.0.2","8.1.1","8.2.1","8.3","8.4","8.5","8.6","8.7")
           foreach ($ver in $versions) {
             $url = "https://services.gradle.org/distributions/gradle-$ver-bin.zip"
             $dest = "$gradleUserHome\wrapper\dists\gradle-$ver-bin"
@@ -159,12 +154,18 @@ jobs:
           }
           New-Item -ItemType Directory -Path "gradle-cache-builder" -Force | Out-Null
           Set-Location "gradle-cache-builder"
-          
-          # کپی کردن gradlew از پروژه اصلی تا wrapper در دسترس باشد
-          Copy-Item -Path "../my_app/gradlew" -Destination "." -Force -ErrorAction SilentlyContinue
-          Copy-Item -Path "../my_app/gradlew.bat" -Destination "." -Force -ErrorAction SilentlyContinue
-          Copy-Item -Path "../my_app/gradle" -Destination "." -Recurse -Force -ErrorAction SilentlyContinue
-          
+
+          if (Test-Path "../my_app/gradlew.bat") {
+            Copy-Item -Path "../my_app/gradlew" -Destination "." -Force
+            Copy-Item -Path "../my_app/gradlew.bat" -Destination "." -Force
+            Copy-Item -Path "../my_app/gradle" -Destination "." -Recurse -Force
+          } else {
+            Write-Warning "my_app gradlew not found, creating dummy"
+            # ایجاد یک gradlew.bat ساده برای جلوگیری از خطا
+            '@echo off' | Out-File -FilePath "gradlew.bat" -Encoding ascii
+            'echo dummy' | Out-File -FilePath "gradlew.bat" -Encoding ascii -Append
+          }
+
           $gradleBuildScript = @"
           buildscript {
               repositories { mavenCentral() google() }
@@ -180,16 +181,12 @@ jobs:
           "@
           $gradleBuildScript | Out-File -FilePath "build.gradle" -Encoding ascii
           New-Item -ItemType Directory -Path "app" -Force | Out-Null
-          
-          # اگر gradlew وجود دارد اجرا کن، در غیر این صورت پیام بده و ادامه بده
+
           if (Test-Path ".\gradlew.bat") {
             .\gradlew --no-daemon dependencies > $null 2>&1
-          } else {
-            Write-Warning "gradlew not found, skipping dependency resolution"
           }
           Set-Location ..
 
-      # ======================== ۶- کش پکیج‌های پاب ========================
       - name: Build extra Pub Cache (many packages)
         shell: pwsh
         run: |
@@ -217,7 +214,7 @@ jobs:
             "cupertino_icons", "font_awesome_flutter", "material_design_icons_flutter", "flutter_vector_icons"
           )
           $deps = ""
-          foreach ($pkg in $packages) { $deps += "  $pkg: any`n" }
+          foreach ($pkg in $packages) { $deps += "  $($pkg): any`n" }
           $pubspecContent = @"
           name: cache_builder
           environment:
@@ -237,7 +234,6 @@ jobs:
           flutter pub get --verbose
           Set-Location ..
 
-      # ======================== ۷- بیلد گرفتن از پروژه واقعی تو ========================
       - name: Build YOUR messenger app to cache all project-specific dependencies
         shell: pwsh
         run: |
@@ -252,7 +248,6 @@ jobs:
           .\gradlew assembleRelease --no-daemon
           cd ../..
 
-      # ======================== ۸- جمع‌آوری همه چیز در یک پوشه ========================
       - name: Assemble ultimate offline folder
         shell: pwsh
         run: |
@@ -312,7 +307,6 @@ jobs:
 
           Write-Host "All files collected in $target"
 
-      # ======================== ۹- فشرده‌سازی با 7z ========================
       - name: Install 7-Zip
         shell: pwsh
         run: |
@@ -323,17 +317,14 @@ jobs:
         shell: pwsh
         run: |
           & "C:\Program Files\7-Zip\7z.exe" a -t7z -mx=9 -md=64m -mmt=on "flutter-offline-full.7z" ".\flutter-offline-full\" -bsp1 -bse1
-          Write-Host "Single archive created: flutter-offline-full.7z"
           Write-Host "Size: $([math]::Round((Get-Item 'flutter-offline-full.7z').Length / 1GB, 2)) GB"
 
-      # ======================== ۱۰- تست سلامت آرشیو ========================
       - name: Test archive integrity
         shell: pwsh
         run: |
           & "C:\Program Files\7-Zip\7z.exe" t "flutter-offline-full.7z"
           if ($LASTEXITCODE -ne 0) { throw "Archive is corrupted!" }
 
-      # ======================== ۱۱- تقسیم با split به قطعات ۱.۸ گیگابایتی ========================
       - name: Split archive with split command (Git Bash)
         shell: bash
         run: |
@@ -342,7 +333,6 @@ jobs:
           echo "Completed. Parts:"
           ls -lh flutter-offline.7z.part*
 
-      # ======================== ۱۲- آپلود در GitHub Releases ========================
       - name: Create GitHub Release
         id: create_release
         run: |
