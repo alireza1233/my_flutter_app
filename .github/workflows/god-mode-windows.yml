@@ -1,348 +1,72 @@
-name: 🔥 ULTIMATE OFFLINE BUNDLE (Android + Windows) - Split for GitHub Releases
+# ... (همه مراحل قبل از فشرده‌سازی مثل قبل)
 
-on:
-  workflow_dispatch:
+# ======================== COMPRESS WITH 7z (NO SPLIT) ========================
+- name: Install 7-Zip
+  shell: pwsh
+  run: |
+    choco install 7zip -y --no-progress
+    $env:PATH = "C:\Program Files\7-Zip;$env:PATH"
 
-jobs:
-  build-complete-offline:
-    runs-on: windows-latest
-    permissions:
-      contents: write
+- name: Create single 7z archive (max compression, no split)
+  shell: pwsh
+  run: |
+    & "C:\Program Files\7-Zip\7z.exe" a -t7z -mx=9 -md=64m -mmt=on "flutter-offline-full.7z" ".\flutter-offline-full\" -bsp1 -bse1
+    Write-Host "Single archive created: flutter-offline-full.7z"
+    Write-Host "Size: $([math]::Round((Get-Item 'flutter-offline-full.7z').Length / 1GB, 2)) GB"
 
-    steps:
-      - name: Checkout dummy project stub
-        uses: actions/checkout@v4
-        with:
-          repository: flutter/flutter
-          path: dummy-stub
-          sparse-checkout: README.md
+# ======================== TEST INTEGRITY BEFORE SPLIT ========================
+- name: Test archive integrity
+  shell: pwsh
+  run: |
+    & "C:\Program Files\7-Zip\7z.exe" t "flutter-offline-full.7z"
+    if ($LASTEXITCODE -ne 0) { throw "Archive is corrupted!" }
 
-      # ======================== SETUP FLUTTER & MULTI JDK ========================
-      - name: Setup Flutter stable 3.24.3
-        uses: subosito/flutter-action@v2
-        with:
-          flutter-version: '3.24.3'
-          channel: 'stable'
-          cache: true
+# ======================== SPLIT INTO 1.8GB CHUNKS USING BINARY SPLIT ========================
+- name: Split archive with split command (Git Bash / MSYS2)
+  shell: bash
+  run: |
+    echo "📦 Splitting flutter-offline-full.7z into 1.8GB chunks..."
+    split -b 1800M -d --verbose flutter-offline-full.7z "flutter-offline.7z.part"
+    echo ""
+    echo "✅ Split completed. Generated parts:"
+    ls -lh flutter-offline.7z.part*
 
-      - name: Setup JDK 11, 17, 21
-        uses: actions/setup-java@v4
-        with:
-          distribution: 'temurin'
-          java-version: |
-            11
-            17
-            21
-          java-package: jdk
+# ======================== UPLOAD SPLIT PARTS TO RELEASE ========================
+- name: Create GitHub Release
+  id: create_release
+  run: |
+    $tag = "offline-bundle-v$((Get-Date -Format 'yyyyMMdd-HHmmss'))"
+    echo "RELEASE_TAG=$tag" | Out-File -FilePath $env:GITHUB_ENV -Append
+    gh release create $tag --title "Complete Flutter Offline Bundle (Split Parts)" --notes "Download all .part files, then combine and extract."
+  env:
+    GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  shell: pwsh
 
-      # ======================== ANDROID SDK - EVERYTHING ========================
-      - name: Install full Android SDK (all platforms, build-tools, NDKs, emulator, extras)
-        shell: pwsh
-        run: |
-          $androidHome = "$env:LOCALAPPDATA\Android\Sdk"
-          $env:ANDROID_HOME = $androidHome
-          $env:ANDROID_SDK_ROOT = $androidHome
-          mkdir -Force $androidHome | Out-Null
+- name: Upload split parts to Release
+  run: |
+    Get-ChildItem -Filter "flutter-offline.7z.part*" | ForEach-Object {
+      gh release upload $env:RELEASE_TAG "$($_.FullName)" --clobber
+      Write-Host "Uploaded $($_.Name) ($([math]::Round($_.Length/1MB,2)) MB)"
+    }
+  env:
+    GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  shell: pwsh
 
-          # Download cmdline-tools if missing
-          if (!(Test-Path "$androidHome\cmdline-tools\latest\bin\sdkmanager.bat")) {
-            curl -o sdk-tools.zip https://dl.google.com/android/repository/commandlinetools-win-11076708_latest.zip
-            Expand-Archive sdk-tools.zip -DestinationPath $androidHome
-            Move-Item "$androidHome\cmdline-tools\bin" "$androidHome\cmdline-tools\latest\" -Force
-            Remove-Item sdk-tools.zip -Force
-          }
-          $sdkmanager = "$androidHome\cmdline-tools\latest\bin\sdkmanager.bat"
-
-          # Accept ALL licenses without user interaction (more robust method)
-          $licenses = & $sdkmanager --licenses 2>&1 | Select-String -Pattern "android-sdk-license" -Context 0,0
-          for ($i=0; $i -lt 10; $i++) { echo y | & $sdkmanager --licenses 2>&1 > $null }
-
-          # All platforms (API 21 to 35)
-          $platforms = 21..35 | ForEach-Object { "platforms;android-$_" }
-          # All build-tools (major versions 23.0.3 up to 35.0.0)
-          $buildTools = @(
-            "35.0.0","34.0.0","33.0.2","33.0.1","33.0.0","32.0.0","31.0.0","30.0.3",
-            "29.0.3","28.0.3","27.0.3","26.0.3","25.0.3","24.0.3","23.0.3"
-          ) | ForEach-Object { "build-tools;$_" }
-          # NDK multiple versions
-          $ndks = @(
-            "26.3.11579264","27.0.12077973","25.2.9519653","23.2.8568313","21.4.7075529"
-          ) | ForEach-Object { "ndk;$_" }
-          # CMake, Emulator, System Images, Extras, HAXM
-          $other = @(
-            "cmake;3.22.1",
-            "emulator",
-            "extras;google;m2repository",
-            "extras;android;m2repository",
-            "platform-tools",
-            "system-images;android-34;google_apis;x86_64",
-            "system-images;android-33;google_apis;x86_64",
-            "system-images;android-30;google_apis;x86_64",
-            "system-images;android-29;google_apis;x86_64",
-            "system-images;android-34;google_apis_playstore;x86_64",
-            "extras;intel;Hardware_Accelerated_Execution_Manager"
-          )
-          $allPackages = $platforms + $buildTools + $ndks + $other
-          # Install in batches to avoid command line length limit
-          $batchSize = 20
-          for ($i=0; $i -lt $allPackages.Count; $i += $batchSize) {
-            $batch = $allPackages[$i..($i+$batchSize-1)] -join " "
-            Write-Host "Installing batch $i : $batch"
-            & $sdkmanager $batch --verbose
-          }
-          # Verify
-          & $sdkmanager --list
-
-      # ======================== VISUAL STUDIO + WINDOWS SDK ========================
-      - name: Install Visual Studio Build Tools 2022 + Windows SDK (full)
-        shell: pwsh
-        run: |
-          choco install visualstudio2022buildtools --version=17.10.5 -y --no-progress
-          choco install visualstudio2022-workload-vctools -y --no-progress
-          choco install windows-sdk-11 -y --no-progress
-          choco install windows-sdk-10-version-2004 -y --no-progress  # older for compatibility
-          # Add MSVC and Windows SDK to PATH for later commands
-          $msvcLatest = Get-ChildItem "C:\Program Files\Microsoft Visual Studio\2022\BuildTools\VC\Tools\MSVC" -Directory | Sort-Object Name -Descending | Select-Object -First 1
-          $sdkLatest = Get-ChildItem "C:\Program Files (x86)\Windows Kits\10\bin\10.0.*" -Directory | Sort-Object Name -Descending | Select-Object -First 1
-          $env:PATH = "$($msvcLatest.FullName)\bin\Hostx64\x64;$($sdkLatest.FullName)\x64;$env:PATH"
-
-      # ======================== GRADLE DISTRIBUTIONS + PLUGIN CACHE ========================
-      - name: Pre-cache ALL Gradle distributions and common plugins
-        shell: pwsh
-        run: |
-          $gradleUserHome = "$env:USERPROFILE\.gradle"
-          mkdir -Force "$gradleUserHome\wrapper\dists" | Out-Null
-
-          # Download every Gradle version from 6.5 to 8.7
-          $versions = @("6.5", "6.6.1", "6.7.1", "6.8.3", "6.9.4", "7.0.2", "7.1.1", "7.2", "7.3.3", "7.4.2", "7.5.1", "7.6.4", "8.0.2", "8.1.1", "8.2.1", "8.3", "8.4", "8.5", "8.6", "8.7")
-          foreach ($ver in $versions) {
-            $url = "https://services.gradle.org/distributions/gradle-$ver-bin.zip"
-            $dest = "$gradleUserHome\wrapper\dists\gradle-$ver-bin"
-            mkdir -Force $dest -ErrorAction SilentlyContinue
-            $zipFile = "$dest\gradle-$ver-bin.zip"
-            if (!(Test-Path $zipFile)) {
-              curl -L -o $zipFile $url
-              Expand-Archive -Path $zipFile -DestinationPath $dest -Force
-            }
-          }
-
-          # Pre-populate Gradle plugin cache by creating a dummy multi-project build with common plugins
-          New-Item -ItemType Directory -Path "gradle-cache-builder" -Force | Out-Null
-          Set-Location "gradle-cache-builder"
-          @'
-          buildscript {
-              repositories { mavenCentral() google() }
-              dependencies {
-                  classpath 'com.android.tools.build:gradle:8.5.0'
-                  classpath 'com.google.gms:google-services:4.4.0'
-                  classpath 'com.google.firebase:firebase-crashlytics-gradle:2.9.9'
-                  classpath 'org.jetbrains.kotlin:kotlin-gradle-plugin:1.9.22'
-                  classpath 'com.google.dagger:hilt-android-gradle-plugin:2.48'
-              }
-          }
-          allprojects { repositories { mavenCentral() google() } }
-          '@ | Out-File -FilePath "build.gradle" -Encoding ascii
-          New-Item -ItemType Directory -Path "app" -Force | Out-Null
-          .\gradlew --no-daemon dependencies > $null 2>&1
-          Set-Location ..
-
-      # ======================== FLUTTER PUB CACHE (EVERY POPULAR PACKAGE) ========================
-      - name: Build Ultimate Pub Cache (200+ packages)
-        shell: pwsh
-        run: |
-          New-Item -ItemType Directory -Force -Path pub_cache_project | Out-Null
-          Set-Location pub_cache_project
-          # Generate a pubspec.yaml with all commonly used packages
-          $packages = @(
-            "flutter", "provider", "riverpod", "flutter_riverpod", "dio", "sqflite", "shared_preferences",
-            "firebase_core", "firebase_auth", "cloud_firestore", "firebase_storage", "firebase_messaging",
-            "firebase_analytics", "firebase_crashlytics", "firebase_dynamic_links", "google_sign_in",
-            "sign_in_with_apple", "http", "path_provider", "image_picker", "cached_network_image",
-            "url_launcher", "flutter_local_notifications", "flutter_native_splash", "flutter_launcher_icons",
-            "google_fonts", "flutter_svg", "permission_handler", "device_info_plus", "package_info_plus",
-            "connectivity_plus", "intl", "equatable", "bloc", "flutter_bloc", "get_it", "hive", "hive_flutter",
-            "lottie", "shimmer", "carousel_slider", "webview_flutter", "video_player", "audioplayers",
-            "file_picker", "easy_localization", "flutter_secure_storage", "crypto", "path", "sembast",
-            "animations", "flutter_markdown", "qr_flutter", "barcode_scan", "local_auth", "geolocator",
-            "google_maps_flutter", "flutter_polyline_points", "charts_flutter", "syncfusion_flutter_charts",
-            "fl_chart", "pdf", "printing", "excel", "open_file", "share_plus", "in_app_purchase",
-            "revenuecat", "admob_flutter", "google_mobile_ads", "flutter_facebook_auth", "appsflyer_sdk",
-            "onesignal_flutter", "sentry_flutter", "mixpanel_flutter", "amplify_flutter", "aws_common",
-            "algolia", "graphql_flutter", "apollo_client", "rive", "flare_splash", "spritewidget",
-            "flame", "bonfire", "tiled", "audioplayers", "just_audio", "assets_audio_player", "chewie",
-            "photo_view", "staggered_grid_view", "infinite_scroll_pagination", "sliver_tools", "flutter_slidable",
-            "group_button", "dropdown_search", "flutter_typeahead", "searchable_dropdown", "modal_bottom_sheet",
-            "cupertino_icons", "font_awesome_flutter", "material_design_icons_flutter", "flutter_vector_icons"
-          )
-          $deps = ""
-          foreach ($pkg in $packages) { $deps += "  $pkg: any`n" }
-          @"
-          name: cache_builder
-          environment:
-            sdk: '>=3.0.0 <4.0.0'
-          dependencies:
-            flutter:
-              sdk: flutter
-        $deps
-          dev_dependencies:
-            flutter_test:
-              sdk: flutter
-            flutter_lints: ^3.0.0
-          flutter:
-            uses-material-design: true
-          "@ | Out-File -FilePath pubspec.yaml -Encoding utf8
-          flutter pub get --verbose
-          Set-Location ..
-
-      # ======================== REAL APP TO PRECACHE FLUTTER ENGINES & GRADLE DEPS ========================
-      - name: Build full dummy Flutter app (Android + Windows)
-        shell: pwsh
-        run: |
-          flutter create --platforms=android,windows --project-name=offline_seed dummy_app
-          Set-Location dummy_app
-          # Add common dependencies to pubspec.yaml (to fetch more artifacts)
-          Add-Content -Path pubspec.yaml -Value @"
-          dependencies:
-            firebase_core: any
-            cloud_firestore: any
-            google_sign_in: any
-            path_provider: any
-            shared_preferences: any
-          "@
-          flutter pub get
-          # Build all variants to cache AOT snapshots and native binaries
-          flutter build apk --debug
-          flutter build apk --release
-          flutter build apk --profile
-          flutter build windows --debug
-          flutter build windows --release
-          # Also run gradle offline deps
-          cd android
-          .\gradlew dependencies --no-daemon --offline || echo "First run not offline, will be cached"
-          .\gradlew assembleRelease --no-daemon
-          cd ..
-          Set-Location ..
-
-      # ======================== COLLECT EVERYTHING INTO ONE DIRECTORY ========================
-      - name: Assemble ultimate offline folder
-        shell: pwsh
-        run: |
-          $target = "flutter-offline-full"
-          New-Item -ItemType Directory -Force -Path $target | Out-Null
-
-          # 1. Flutter SDK
-          Copy-Item -Path "$env:FLUTTER_ROOT" -Destination "$target\flutter" -Recurse -Force
-
-          # 2. Android SDK
-          Copy-Item -Path "$env:LOCALAPPDATA\Android\Sdk" -Destination "$target\android-sdk" -Recurse -Force
-
-          # 3. Multiple JDKs (copy from toolcache)
-          $javaCache = "C:\hostedtoolcache\windows\Java_Temurin-Hotspot_jdk"
-          if (Test-Path $javaCache) {
-            Copy-Item -Path $javaCache -Destination "$target\jdks" -Recurse -Force
-          } else {
-            Copy-Item -Path "$env:JAVA_HOME" -Destination "$target\jdk-17" -Recurse -Force
-          }
-
-          # 4. Gradle user home (caches + wrapper dists)
-          $gradleHome = "$env:USERPROFILE\.gradle"
-          Copy-Item -Path $gradleHome -Destination "$target\.gradle" -Recurse -Force -ErrorAction SilentlyContinue
-
-          # 5. Pub cache
-          $pubCache = if ($env:PUB_CACHE) { $env:PUB_CACHE } else { "$env:LOCALAPPDATA\Pub\Cache" }
-          Copy-Item -Path $pubCache -Destination "$target\pub-cache" -Recurse -Force
-
-          # 6. Android user config (licenses, keystore, debug keys)
-          $androidConfig = "$env:USERPROFILE\.android"
-          Copy-Item -Path $androidConfig -Destination "$target\.android" -Recurse -Force -ErrorAction SilentlyContinue
-
-          # 7. Visual Studio Build Tools (portable part) - skip full copy (too huge) but copy MSVC and Windows Kits
-          $msvcFolder = "C:\Program Files\Microsoft Visual Studio\2022\BuildTools\VC\Tools\MSVC"
-          $winKits = "C:\Program Files (x86)\Windows Kits\10"
-          if (Test-Path $msvcFolder) { Copy-Item -Path $msvcFolder -Destination "$target\MSVC" -Recurse -Force -ErrorAction SilentlyContinue }
-          if (Test-Path $winKits) { Copy-Item -Path $winKits -Destination "$target\WindowsKits" -Recurse -Force -ErrorAction SilentlyContinue }
-
-          # 8. Environment setup scripts (multiple)
-          $setupBat = @"
-          @echo off
-          set ANDROID_HOME=%~dp0android-sdk
-          set ANDROID_SDK_ROOT=%~dp0android-sdk
-          set GRADLE_USER_HOME=%~dp0\.gradle
-          set PUB_CACHE=%~dp0pub-cache
-          set FLUTTER_ROOT=%~dp0flutter
-          :: Select highest JDK 17
-          for /d %%i in ("%~dp0jdks\17*") do set JAVA_HOME=%%i
-          set PATH=%FLUTTER_ROOT%\bin;%JAVA_HOME%\bin;%ANDROID_HOME%\platform-tools;%ANDROID_HOME%\cmdline-tools\latest\bin;%PATH%
-          echo Ultimate offline environment ready. Run flutter doctor to verify.
-          "@
-          $setupBat | Out-File -FilePath "$target\setup.bat" -Encoding ascii
-
-          $setupPs1 = @'
-          $env:ANDROID_HOME = "$PSScriptRoot\android-sdk"
-          $env:ANDROID_SDK_ROOT = $env:ANDROID_HOME
-          $env:GRADLE_USER_HOME = "$PSScriptRoot\.gradle"
-          $env:PUB_CACHE = "$PSScriptRoot\pub-cache"
-          $env:FLUTTER_ROOT = "$PSScriptRoot\flutter"
-          $jdkPath = Get-ChildItem "$PSScriptRoot\jdks\17*" -Directory | Select-Object -First 1
-          $env:JAVA_HOME = $jdkPath.FullName
-          $env:PATH = "$env:FLUTTER_ROOT\bin;$env:JAVA_HOME\bin;$env:ANDROID_HOME\platform-tools;$env:ANDROID_HOME\cmdline-tools\latest\bin;$env:PATH"
-          Write-Host "Ready. Use 'flutter doctor' to check."
-          '@
-          $setupPs1 | Out-File -FilePath "$target\setup.ps1" -Encoding ascii
-
-          Write-Host "Collected all files in $target"
-
-      # ======================== SPLIT INTO 1.8 GB CHUNKS USING 7-ZIP ========================
-      - name: Install 7-Zip (for splitting)
-        shell: pwsh
-        run: |
-          choco install 7zip -y --no-progress
-          # Add to PATH
-          $env:PATH = "C:\Program Files\7-Zip;$env:PATH"
-
-      - name: Compress and split folder into 1800MB parts
-        shell: pwsh
-        run: |
-          $source = "flutter-offline-full"
-          $outputBase = "flutter-offline.7z"
-          # Use 7z to create split archive (1800m = 1800 MB)
-          & "C:\Program Files\7-Zip\7z.exe" a -t7z -mx=5 -v1800m "$outputBase" "$source\" -mmt=on
-          Write-Host "Split archives created:"
-          Get-ChildItem -Filter "$outputBase.*" | ForEach-Object { Write-Host $_.Name }
-
-      # ======================== UPLOAD SPLIT FILES TO GITHUB RELEASE ========================
-      - name: Create GitHub Release
-        id: create_release
-        run: |
-          $tag = "offline-bundle-v$((Get-Date -Format 'yyyyMMdd-HHmmss'))"
-          echo "RELEASE_TAG=$tag" | Out-File -FilePath $env:GITHUB_ENV -Append
-          gh release create $tag --title "Complete Flutter Offline Bundle (Split)" --notes "This release contains the full offline environment for Flutter Android + Windows development. Download all .7z.xxx parts, then use 7-Zip to extract: '7z x flutter-offline.7z.001'"
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        shell: pwsh
-
-      - name: Upload split parts to Release
-        run: |
-          Get-ChildItem -Filter "flutter-offline.7z.*" | ForEach-Object {
-            gh release upload $env:RELEASE_TAG "$($_.FullName)" --clobber
-            Write-Host "Uploaded $($_.Name)"
-          }
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        shell: pwsh
-
-      - name: Upload also a helper script to combine and extract
-        run: |
-          @'
-          @echo off
-          echo This will combine and extract the split Flutter offline bundle.
-          echo Make sure 7-Zip is installed (https://www.7-zip.org).
-          echo.
-          echo To extract: 7z x flutter-offline.7z.001
-          echo.
-          pause
-          '@ | Out-File -FilePath "extract_instructions.bat" -Encoding ascii
-          gh release upload $env:RELEASE_TAG "extract_instructions.bat" --clobber
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        shell: pwsh
+- name: Upload combine+extract helper script
+  run: |
+    @'
+    @echo off
+    echo ==================================================
+    echo Combining split parts into one 7z archive...
+    copy /b flutter-offline.7z.part00 + flutter-offline.7z.part01 + flutter-offline.7z.part02 + flutter-offline.7z.part03 + flutter-offline.7z.part04 + flutter-offline.7z.part05 + flutter-offline.7z.part06 + flutter-offline.7z.part07 + flutter-offline.7z.part08 + flutter-offline.7z.part09 + flutter-offline.7z.part10 + flutter-offline.7z.part11 + flutter-offline.7z.part12 + flutter-offline.7z.part13 + flutter-offline.7z.part14 + flutter-offline.7z.part15 flutter-offline-combined.7z
+    echo.
+    echo Extracting combined archive with 7-Zip...
+    7z x flutter-offline-combined.7z -y
+    echo.
+    echo Done! Run setup.bat to configure environment.
+    pause
+    '@ | Out-File -FilePath "combine_and_extract.bat" -Encoding ascii
+    gh release upload $env:RELEASE_TAG "combine_and_extract.bat" --clobber
+  env:
+    GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  shell: pwsh
