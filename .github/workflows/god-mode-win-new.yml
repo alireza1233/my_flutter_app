@@ -300,19 +300,17 @@ jobs:
       - name: Create GitHub Release
         id: create_release
         run: |
-          cd ${{ github.workspace }}
           $tag = "offline-bundle-v$((Get-Date -Format 'yyyyMMdd-HHmmss'))"
           echo "RELEASE_TAG=$tag" | Out-File -FilePath $env:GITHUB_ENV -Append
-          gh release create $tag --title "Complete Flutter Offline Bundle (Split Parts)" --notes "Download all .part files, then combine and extract."
+          gh release create $tag --title "Complete Flutter Offline Bundle (Split Parts)" --notes "Download all .part files, then combine and extract." --repo "${{ github.repository }}"
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         shell: pwsh
 
       - name: Upload split parts to Release
         run: |
-          cd ${{ github.workspace }}
           Get-ChildItem -Filter "flutter-offline.7z.part*" | ForEach-Object {
-            gh release upload $env:RELEASE_TAG "$($_.FullName)" --clobber
+            gh release upload $env:RELEASE_TAG "$($_.FullName)" --clobber --repo "${{ github.repository }}"
             Write-Host "Uploaded $($_.Name) ($([math]::Round($_.Length/1MB,2)) MB)"
           }
         env:
@@ -321,7 +319,6 @@ jobs:
 
       - name: Upload combine+extract helper script
         run: |
-          cd ${{ github.workspace }}
           $scriptContent = @"
           @echo off
           echo Combining split parts into one 7z archive...
@@ -334,7 +331,7 @@ jobs:
           pause
           "@
           $scriptContent | Out-File -FilePath "combine_and_extract.bat" -Encoding ascii
-          gh release upload $env:RELEASE_TAG "combine_and_extract.bat" --clobber
+          gh release upload $env:RELEASE_TAG "combine_and_extract.bat" --clobber --repo "${{ github.repository }}"
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         shell: pwsh
