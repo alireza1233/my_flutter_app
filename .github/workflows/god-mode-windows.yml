@@ -115,19 +115,7 @@ jobs:
           }
           New-Item -ItemType Directory -Path "gradle-cache-builder" -Force | Out-Null
           Set-Location "gradle-cache-builder"
-          $gradleBuildScript = @'
-          buildscript {
-              repositories { mavenCentral() google() }
-              dependencies {
-                  classpath 'com.android.tools.build:gradle:8.5.0'
-                  classpath 'com.google.gms:google-services:4.4.0'
-                  classpath 'com.google.firebase:firebase-crashlytics-gradle:2.9.9'
-                  classpath 'org.jetbrains.kotlin:kotlin-gradle-plugin:1.9.22'
-                  classpath 'com.google.dagger:hilt-android-gradle-plugin:2.48'
-              }
-          }
-          allprojects { repositories { mavenCentral() google() } }
-          '@
+          $gradleBuildScript = "buildscript { repositories { mavenCentral() google() } dependencies { classpath 'com.android.tools.build:gradle:8.5.0' classpath 'com.google.gms:google-services:4.4.0' classpath 'com.google.firebase:firebase-crashlytics-gradle:2.9.9' classpath 'org.jetbrains.kotlin:kotlin-gradle-plugin:1.9.22' classpath 'com.google.dagger:hilt-android-gradle-plugin:2.48' } } allprojects { repositories { mavenCentral() google() } }"
           $gradleBuildScript | Out-File -FilePath "build.gradle" -Encoding ascii
           New-Item -ItemType Directory -Path "app" -Force | Out-Null
           .\gradlew --no-daemon dependencies > $null 2>&1
@@ -162,21 +150,7 @@ jobs:
           )
           $deps = ""
           foreach ($pkg in $packages) { $deps += "  $pkg: any`n" }
-          $pubspecContent = @"
-          name: cache_builder
-          environment:
-            sdk: '>=3.0.0 <4.0.0'
-          dependencies:
-            flutter:
-              sdk: flutter
-        $deps
-          dev_dependencies:
-            flutter_test:
-              sdk: flutter
-            flutter_lints: ^3.0.0
-          flutter:
-            uses-material-design: true
-          "@
+          $pubspecContent = "name: cache_builder`nenvironment:`n  sdk: '>=3.0.0 <4.0.0'`ndependencies:`n  flutter:`n    sdk: flutter`n$deps`ndev_dependencies:`n  flutter_test:`n    sdk: flutter`n  flutter_lints: ^3.0.0`nflutter:`n  uses-material-design: true"
           $pubspecContent | Out-File -FilePath pubspec.yaml -Encoding utf8
           flutter pub get --verbose
           Set-Location ..
@@ -228,30 +202,10 @@ jobs:
 
           Copy-Item -Path "my_app" -Destination "$target\my_app_source" -Recurse -Force -ErrorAction SilentlyContinue
 
-          $setupBat = @"
-          @echo off
-          set ANDROID_HOME=%~dp0android-sdk
-          set ANDROID_SDK_ROOT=%~dp0android-sdk
-          set GRADLE_USER_HOME=%~dp0\.gradle
-          set PUB_CACHE=%~dp0pub-cache
-          set FLUTTER_ROOT=%~dp0flutter
-          for /d %%i in ("%~dp0jdks\17*") do set JAVA_HOME=%%i
-          set PATH=%FLUTTER_ROOT%\bin;%JAVA_HOME%\bin;%ANDROID_HOME%\platform-tools;%ANDROID_HOME%\cmdline-tools\latest\bin;%PATH%
-          echo Ultimate offline environment ready.
-          "@
+          $setupBat = "@echo off`nset ANDROID_HOME=%~dp0android-sdk`nset ANDROID_SDK_ROOT=%~dp0android-sdk`nset GRADLE_USER_HOME=%~dp0\.gradle`nset PUB_CACHE=%~dp0pub-cache`nset FLUTTER_ROOT=%~dp0flutter`nfor /d %%i in (""%~dp0jdks\17*"") do set JAVA_HOME=%%i`nset PATH=%FLUTTER_ROOT%\bin;%JAVA_HOME%\bin;%ANDROID_HOME%\platform-tools;%ANDROID_HOME%\cmdline-tools\latest\bin;%PATH%`necho Ultimate offline environment ready."
           $setupBat | Out-File -FilePath "$target\setup.bat" -Encoding ascii
 
-          $setupPs1 = @'
-          $env:ANDROID_HOME = "$PSScriptRoot\android-sdk"
-          $env:ANDROID_SDK_ROOT = $env:ANDROID_HOME
-          $env:GRADLE_USER_HOME = "$PSScriptRoot\.gradle"
-          $env:PUB_CACHE = "$PSScriptRoot\pub-cache"
-          $env:FLUTTER_ROOT = "$PSScriptRoot\flutter"
-          $jdkPath = Get-ChildItem "$PSScriptRoot\jdks\17*" -Directory | Select-Object -First 1
-          $env:JAVA_HOME = $jdkPath.FullName
-          $env:PATH = "$env:FLUTTER_ROOT\bin;$env:JAVA_HOME\bin;$env:ANDROID_HOME\platform-tools;$env:ANDROID_HOME\cmdline-tools\latest\bin;$env:PATH"
-          Write-Host "Ready."
-          '@
+          $setupPs1 = '$env:ANDROID_HOME = "$PSScriptRoot\android-sdk"' + "`n" + '$env:ANDROID_SDK_ROOT = $env:ANDROID_HOME' + "`n" + '$env:GRADLE_USER_HOME = "$PSScriptRoot\.gradle"' + "`n" + '$env:PUB_CACHE = "$PSScriptRoot\pub-cache"' + "`n" + '$env:FLUTTER_ROOT = "$PSScriptRoot\flutter"' + "`n" + '$jdkPath = Get-ChildItem "$PSScriptRoot\jdks\17*" -Directory | Select-Object -First 1' + "`n" + '$env:JAVA_HOME = $jdkPath.FullName' + "`n" + '$env:PATH = "$env:FLUTTER_ROOT\bin;$env:JAVA_HOME\bin;$env:ANDROID_HOME\platform-tools;$env:ANDROID_HOME\cmdline-tools\latest\bin;$env:PATH"' + "`n" + 'Write-Host "Ready."'
           $setupPs1 | Out-File -FilePath "$target\setup.ps1" -Encoding ascii
 
           Write-Host "All files collected in $target"
@@ -310,17 +264,7 @@ jobs:
       - name: Upload combine+extract helper script
         shell: pwsh
         run: |
-          $scriptContent = @'
-          @echo off
-          echo Combining split parts into one 7z archive...
-          copy /b flutter-offline.7z.part* flutter-offline-combined.7z
-          echo.
-          echo Extracting combined archive with 7-Zip...
-          7z x flutter-offline-combined.7z -y
-          echo.
-          echo Done! Run setup.bat to configure environment.
-          pause
-          '@
+          $scriptContent = "@echo off`necho Combining split parts into one 7z archive...`ncopy /b flutter-offline.7z.part* flutter-offline-combined.7z`necho.`necho Extracting combined archive with 7-Zip...`n7z x flutter-offline-combined.7z -y`necho.`necho Done! Run setup.bat to configure environment.`npause"
           $scriptContent | Out-File -FilePath "combine_and_extract.bat" -Encoding ascii
           gh release upload $env:RELEASE_TAG "combine_and_extract.bat" --clobber
         env:
